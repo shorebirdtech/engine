@@ -118,6 +118,8 @@ flutter::Settings FLTDefaultSettingsForBundle(NSBundle* bundle) {
         }
       }
     }
+
+    NSLog("SHOREBIRD LOG");
   }
 
   // Checks to see if the flutter assets directory is already present.

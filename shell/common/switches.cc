@@ -230,6 +230,8 @@ std::unique_ptr<fml::Mapping> GetSymbolMapping(
 Settings SettingsFromCommandLine(const fml::CommandLine& command_line) {
   Settings settings = {};
 
+  FML_LOG(ERROR) << "SettingsFromCommandLine";
+
   // Set executable name.
   if (command_line.has_argv0()) {
     settings.executable_name = command_line.argv0();

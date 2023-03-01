@@ -133,10 +133,13 @@ source_set("flutter_shell_native_src") {
 
   defines = []
 
+  include_dirs = [ "//flutter/updater" ]
+
   libs = [
     "android",
     "EGL",
     "GLESv2",
+    "//flutter/updater/android_aarch64/libupdater.a",
   ]
 }
 

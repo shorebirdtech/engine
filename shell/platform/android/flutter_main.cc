@@ -27,6 +27,8 @@
 #include "third_party/dart/runtime/include/dart_tools_api.h"
 #include "third_party/skia/include/core/SkFontMgr.h"
 
+#include "updater.h"
+
 namespace flutter {
 
 extern "C" {
@@ -117,8 +119,40 @@ void FlutterMain::Init(JNIEnv* env,
   flutter::DartCallbackCache::SetCachePath(
       fml::jni::JavaStringToString(env, appStoragePath));
 
-  fml::paths::InitializeAndroidCachesPath(
-      fml::jni::JavaStringToString(env, engineCachesPath));
+  auto android_cache_path = fml::jni::JavaStringToString(env, engineCachesPath);
+  auto cache_dir =
+      fml::paths::JoinPaths({android_cache_path, "shorebird_updater"});
+  fml::paths::InitializeAndroidCachesPath(android_cache_path);
+
+  FML_LOG(ERROR) << "HACK IN HERE AND HOW";
+
+  fml::CreateDirectory(fml::paths::GetCachesDirectory(), {"shorebird_updater"},
+                       fml::FilePermission::kReadWrite);
+
+  std::string client_id = "client_id";
+
+  // void update(const char *client_id, const char *cache_dir);
+  update(client_id.c_str(), cache_dir.c_str());
+
+  // char *active_path(const char *client_id, const char *cache_dir);
+  char* c_active_path = active_path(client_id.c_str(), cache_dir.c_str());
+  if (c_active_path != NULL) {
+    std::string active_path = c_active_path;
+    free_string(c_active_path);
+    FML_LOG(ERROR) << "Active path: " << active_path;
+
+    settings.application_library_path.clear();
+    settings.application_library_path.emplace_back(active_path);
+
+    char* c_version = active_version(client_id.c_str(), cache_dir.c_str());
+    if (c_version != NULL) {
+      std::string version = c_version;
+      free_string(c_version);
+      FML_LOG(ERROR) << "Active version: " << version;
+    }
+  } else {
+    FML_LOG(ERROR) << "No active path";
+  }
 
   flutter::DartCallbackCache::LoadCacheFromDisk();
 
