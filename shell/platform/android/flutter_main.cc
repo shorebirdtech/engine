@@ -91,7 +91,7 @@ void ConfigureShorebird(std::string android_cache_path,
   app_parameters.channel = "stable";
   app_parameters.client_id = "client_id";
   app_parameters.product_id = "com.example.product";
-  app_parameters.version = "1.0.0";
+  app_parameters.base_version = "1.0.0";
   app_parameters.update_url = NULL;  // default
 
   app_parameters.original_libapp_path =
