@@ -77,6 +77,7 @@ const flutter::Settings& FlutterMain::GetSettings() const {
   return settings_;
 }
 
+// TODO: Move this out into a separate file?
 void ConfigureShorebird(std::string android_cache_path,
                         flutter::Settings& settings) {
   auto cache_dir =
