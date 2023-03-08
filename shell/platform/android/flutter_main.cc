@@ -77,82 +77,52 @@ const flutter::Settings& FlutterMain::GetSettings() const {
   return settings_;
 }
 
-// Old Android versions (e.g. the v16 ndk Flutter uses) don't always include a
-// getauxval symbol, but the Rust ring crate assumes it exists:
-// https://github.com/briansmith/ring/blob/fa25bf3a7403c9fe6458cb87bd8427be41225ca2/src/cpu/arm.rs#L22
-// It uses it to determine if the CPU supports AES instructions.
-// Making this a weak symbol allows the linker to use a real version instead
-// if it can find one.
-// BoringSSL just reads from procfs instead, which is what we would do if
-// we needed to implement this ourselves.  Implementation looks straightforward:
-// https://lwn.net/Articles/519085/
-// https://github.com/google/boringssl/blob/6ab4f0ae7f2db96d240eb61a5a8b4724e5a09b2f/crypto/cpu_arm_linux.c
-#if defined(__ANDROID__) && defined(__arm__)
-extern "C" __attribute__((weak)) unsigned long getauxval(unsigned long type) {
-  return 0;
-}
-#endif
-
 // TODO: Move this out into a separate file?
 void ConfigureShorebird(std::string android_cache_path,
-                        flutter::Settings& settings,
-                        std::string shorebirdYaml,
-                        std::string version,
-                        long version_code) {
+                        flutter::Settings& settings) {
   auto cache_dir =
       fml::paths::JoinPaths({android_cache_path, "shorebird_updater"});
 
   fml::CreateDirectory(fml::paths::GetCachesDirectory(), {"shorebird_updater"},
                        fml::FilePermission::kReadWrite);
 
-  // Using a block to make AppParameters lifetime explicit.
-  {
-    AppParameters app_parameters;
-    // Combine version and version_code into a single string.
-    // We could also pass these separately through to the updater if needed.
-    auto release_version = version + "+" + std::to_string(version_code);
-    app_parameters.release_version = release_version.c_str();
-    app_parameters.cache_dir = cache_dir.c_str();
+  AppParameters app_parameters;
+  // TODO: Read from AndroidManifest.xml
+  app_parameters.channel = "stable";
+  app_parameters.client_id = "client_id";
+  app_parameters.product_id = "com.example.product";
+  app_parameters.base_version = "1.0.0";
+  app_parameters.update_url = NULL;  // default
 
-    // https://stackoverflow.com/questions/26032039/convert-vectorstring-into-char-c
-    std::vector<const char*> c_paths{};
-    for (const auto& string : settings.application_library_path) {
-      c_paths.push_back(string.c_str());
-    }
-    // Do not modify application_library_path or c_strings will invalidate.
+  app_parameters.original_libapp_path =
+      settings.application_library_path[0].c_str();
+  // How do can we get the path to libflutter.so?
+  app_parameters.vm_path = "libflutter.so";
 
-    app_parameters.original_libapp_paths = c_paths.data();
-    app_parameters.original_libapp_paths_size = c_paths.size();
+  app_parameters.cache_dir = cache_dir.c_str();
+  shorebird_init(&app_parameters);
 
-    // shorebird_init copies from app_parameters and shorebirdYaml.
-    shorebird_init(&app_parameters, shorebirdYaml.c_str());
-  }
+  FML_LOG(INFO) << "Starting Shorebird update";
+  shorebird_update();
 
-  char* c_active_path = shorebird_next_boot_patch_path();
+  char* c_active_path = shorebird_active_path();
   if (c_active_path != NULL) {
     std::string active_path = c_active_path;
     shorebird_free_string(c_active_path);
-    FML_LOG(INFO) << "Shorebird updater: active path: " << active_path;
-    char* c_patch_number = shorebird_next_boot_patch_number();
-    if (c_patch_number != NULL) {
-      std::string patch_number = c_patch_number;
-      shorebird_free_string(c_patch_number);
-      FML_LOG(INFO) << "Shorebird updater: active patch number: "
-                    << patch_number;
-    }
+    FML_LOG(INFO) << "Active path: " << active_path;
 
     settings.application_library_path.clear();
     settings.application_library_path.emplace_back(active_path);
-    // Once start_update_thread is called, the next_boot_patch* functions may
-    // change their return values if the shorebird_report_launch_failed
-    // function is called.
-    shorebird_report_launch_start();
-  } else {
-    FML_LOG(INFO) << "Shorebird updater: no active patch.";
-  }
 
-  FML_LOG(INFO) << "Starting Shorebird update";
-  shorebird_start_update_thread();
+    char* c_version = shorebird_active_version();
+    if (c_version != NULL) {
+      std::string version = c_version;
+      shorebird_free_string(c_version);
+      FML_LOG(INFO) << "Active version: " << version;
+    }
+  } else {
+    FML_LOG(ERROR) << "Shorebird updater: no active path.";
+  }
 }
 
 void FlutterMain::Init(JNIEnv* env,
@@ -204,11 +174,7 @@ void FlutterMain::Init(JNIEnv* env,
   fml::paths::InitializeAndroidCachesPath(android_cache_path);
 
 #if FLUTTER_RELEASE
-  std::string shorebird_yaml = fml::jni::JavaStringToString(env, shorebirdYaml);
-  std::string version_string = fml::jni::JavaStringToString(env, version);
-  long version_code = versionCode;
-  ConfigureShorebird(android_cache_path, settings, shorebird_yaml,
-                     version_string, version_code);
+  ConfigureShorebird(android_cache_path, settings);
 #endif
 
   flutter::DartCallbackCache::LoadCacheFromDisk();
