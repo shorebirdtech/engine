@@ -53,9 +53,6 @@ _flutter_framework_headers_copy_dir =
 source_set("flutter_framework_source") {
   visibility = [ ":*" ]
 
-  include_dirs = [ "//flutter/updater" ]
-  libs = [ "//flutter/updater/macos/libupdater.a" ]
-
   sources = [
     "framework/Source/AccessibilityBridgeMac.h",
     "framework/Source/AccessibilityBridgeMac.mm",

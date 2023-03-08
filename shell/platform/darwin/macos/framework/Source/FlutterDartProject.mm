@@ -5,8 +5,6 @@
 #import "flutter/shell/platform/darwin/macos/framework/Headers/FlutterDartProject.h"
 #import "flutter/shell/platform/darwin/macos/framework/Source/FlutterDartProject_Internal.h"
 
-#include "updater.h"
-
 #include <vector>
 
 #include "flutter/shell/platform/common/engine_switches.h"
@@ -34,8 +32,6 @@ static NSString* const kAppBundleIdentifier = @"io.flutter.flutter.app";
     _dartBundle = [NSBundle bundleWithURL:[NSBundle.mainBundle.privateFrameworksURL
                                               URLByAppendingPathComponent:@"App.framework"]];
   }
-  NSLog(@"Hack in HERE");
-
   auto fm = [NSFileManager defaultManager];
 
   // This should come from the application name.
@@ -78,36 +74,6 @@ static NSString* const kAppBundleIdentifier = @"io.flutter.flutter.app";
   [fm removeItemAtPath:dylibUrl.path error:&error];
   if (!success) {
     NSLog(@"Error: %@", error);
-  }
-
-  NSString* clientId = @"client_id";
-  // char *active_version(const char *client_id, const char *cache_dir);
-  update(clientId.UTF8String, cacheDir.UTF8String);
-
-  // char *active_path(const char *client_id, const char *cache_dir);
-  char* cActivePath = active_path(clientId.UTF8String, cacheDir.UTF8String);
-  if (cActivePath != NULL) {
-    NSString* activePath = [NSString stringWithUTF8String:cActivePath];
-    free_string(cActivePath);
-    NSLog(@"SUCCESS, got active_path: %@", activePath);
-    auto activeUrl = [NSURL fileURLWithPath:activePath];
-    success = [fm copyItemAtURL:activeUrl toURL:dylibUrl error:&error];
-    if (!success) {
-      NSLog(@"Error: %@", error);
-    } else {
-      NSLog(@"SUCCESS, booting from active_path: %@", activePath);
-      char* cVersion = active_version(clientId.UTF8String, cacheDir.UTF8String);
-      if (cVersion != NULL) {
-        NSString* version = [NSString stringWithUTF8String:cVersion];
-        free_string(cVersion);
-        NSLog(@"Running version: %@", version);
-      }
-
-      _dartBundle = [NSBundle bundleWithURL:appFrameworkUrl];
-    }
-
-  } else {
-    NSLog(@"FAIL, got active_path: %@", @"NULL");
   }
 
   if (!_dartBundle.isLoaded) {
