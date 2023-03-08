@@ -32,49 +32,6 @@ static NSString* const kAppBundleIdentifier = @"io.flutter.flutter.app";
     _dartBundle = [NSBundle bundleWithURL:[NSBundle.mainBundle.privateFrameworksURL
                                               URLByAppendingPathComponent:@"App.framework"]];
   }
-  auto fm = [NSFileManager defaultManager];
-
-  // This should come from the application name.
-  auto path = @"~/Library/Application Support/flutter_updater";
-  auto expandedPath = [path stringByExpandingTildeInPath];
-  auto cacheDir = [expandedPath stringByAppendingPathComponent:@"cache"];
-  NSLog(@"Cache dir: %@", cacheDir);
-  NSError* error = nil;
-  BOOL success = [fm createDirectoryAtPath:cacheDir
-               withIntermediateDirectories:YES
-                                attributes:nil
-                                     error:&error];
-  if (!success) {
-    NSLog(@"Error: %@", error);
-  }
-
-  auto bootDir = [expandedPath stringByAppendingPathComponent:@"boot"];
-  success = [fm createDirectoryAtPath:bootDir
-          withIntermediateDirectories:YES
-                           attributes:nil
-                                error:&error];
-  if (!success) {
-    NSLog(@"Error: %@", error);
-  }
-
-  auto bootDirUrl = [NSURL fileURLWithPath:bootDir];
-  auto appFrameworkUrl = [bootDirUrl URLByAppendingPathComponent:@"App.framework"];
-
-  [fm removeItemAtPath:appFrameworkUrl.path error:&error];
-  if (!success) {
-    NSLog(@"Error: %@", error);
-  }
-
-  success = [fm copyItemAtURL:_dartBundle.bundleURL toURL:appFrameworkUrl error:&error];
-  if (!success) {
-    NSLog(@"Error: %@", error);
-  }
-
-  auto dylibUrl = [appFrameworkUrl URLByAppendingPathComponent:@"Versions/Current/App"];
-  [fm removeItemAtPath:dylibUrl.path error:&error];
-  if (!success) {
-    NSLog(@"Error: %@", error);
-  }
 
   if (!_dartBundle.isLoaded) {
     [_dartBundle load];
