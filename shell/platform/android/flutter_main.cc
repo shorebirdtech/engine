@@ -80,7 +80,8 @@ const flutter::Settings& FlutterMain::GetSettings() const {
 // TODO: Move this out into a separate file?
 void ConfigureShorebird(std::string android_cache_path,
                         flutter::Settings& settings,
-                        std::string shorebirdYaml) {
+                        std::string shorebirdYaml,
+                        std::string version) {
   auto cache_dir =
       fml::paths::JoinPaths({android_cache_path, "shorebird_updater"});
 
@@ -88,15 +89,20 @@ void ConfigureShorebird(std::string android_cache_path,
                        fml::FilePermission::kReadWrite);
 
   AppParameters app_parameters;
-  // TODO: Read from AndroidManifest.xml
-  app_parameters.base_version = "1.0.0";
+  app_parameters.base_version = version.c_str();
+  app_parameters.cache_dir = cache_dir.c_str();
 
+  // The intent is that the rust side could hash or otherwise check that the
+  // libapp version matches the version the patch is intended for, but currently
+  // that's not implemented.
   app_parameters.original_libapp_path =
       settings.application_library_path[0].c_str();
   // TODO: How do can we get the path to libflutter.so?
+  // The Rust side doesn't actually use this yet.  The intent is so that
+  // Rust could hash it, or otherwise know that it matches the version the patch
+  // is intended for, but currently that's not implemented.
   app_parameters.vm_path = "libflutter.so";
 
-  app_parameters.cache_dir = cache_dir.c_str();
   shorebird_init(&app_parameters, shorebirdYaml.c_str());
 
   FML_LOG(INFO) << "Starting Shorebird update";
@@ -130,6 +136,7 @@ void FlutterMain::Init(JNIEnv* env,
                        jstring appStoragePath,
                        jstring engineCachesPath,
                        jstring shorebirdYaml,
+                       jstring version,
                        jlong initTimeMillis) {
   std::vector<std::string> args;
   args.push_back("flutter");
@@ -170,7 +177,9 @@ void FlutterMain::Init(JNIEnv* env,
 
 #if FLUTTER_RELEASE
   std::string shorebird_yaml = fml::jni::JavaStringToString(env, shorebirdYaml);
-  ConfigureShorebird(android_cache_path, settings, shorebird_yaml);
+  std::string version_string = fml::jni::JavaStringToString(env, version);
+  ConfigureShorebird(android_cache_path, settings, shorebird_yaml,
+                     version_string);
 #endif
 
   flutter::DartCallbackCache::LoadCacheFromDisk();
@@ -260,7 +269,7 @@ bool FlutterMain::Register(JNIEnv* env) {
           .name = "nativeInit",
           .signature = "(Landroid/content/Context;[Ljava/lang/String;Ljava/"
                        "lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/"
-                       "lang/String;J)V",
+                       "lang/String;Ljava/lang/String;J)V",
           .fnPtr = reinterpret_cast<void*>(&Init),
       },
       {
