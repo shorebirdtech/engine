@@ -125,6 +125,12 @@ void ConfigureShorebird(std::string android_cache_path,
 
   shorebird_init(&app_parameters, shorebirdYaml.c_str());
 
+  // shorebird_init() copies the paths, so we can free them now.
+  for (auto& path : original_libapp_paths) {
+    free((void*)path);
+    path = nullptr;
+  }
+
   FML_LOG(INFO) << "Starting Shorebird update";
   shorebird_update();
 
