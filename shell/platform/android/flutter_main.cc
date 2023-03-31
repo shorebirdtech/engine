@@ -108,9 +108,16 @@ void ConfigureShorebird(std::string android_cache_path,
   app_parameters.release_version = version.c_str();
   app_parameters.cache_dir = cache_dir.c_str();
 
+  // Converting the strings in `settings.application_library_path` to `char*`.
+  // We maintain a separate vector so that the lifetime of the `char*` is clear.
+  // If we used `c_str` then we would have to be very careful not to modify the
+  // string or have taken a copy of the string as `c_str` is only valid for the
+  // lifetime of the string.
+  std::vector<std::vector<char>> libapp_paths_storage;
   std::vector<const char*> original_libapp_paths;
   for (auto& path : settings.application_library_path) {
-    original_libapp_paths.push_back(strdup(path.c_str()));
+    libapp_paths_storage.push_back(std::vector<char>(path.begin(), path.end()));
+    original_libapp_paths.push_back(libapp_paths_storage.back().data());
   }
 
   app_parameters.original_libapp_paths = original_libapp_paths.data();
@@ -124,12 +131,6 @@ void ConfigureShorebird(std::string android_cache_path,
   app_parameters.vm_path = "libflutter.so";
 
   shorebird_init(&app_parameters, shorebirdYaml.c_str());
-
-  // shorebird_init() copies the paths, so we can free them now.
-  for (auto& path : original_libapp_paths) {
-    free((void*)path);
-    path = nullptr;
-  }
 
   FML_LOG(INFO) << "Starting Shorebird update";
   shorebird_update();
