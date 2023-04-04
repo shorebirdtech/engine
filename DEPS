@@ -20,6 +20,9 @@ vars = {
   'ocmock_git': 'https://github.com/erikdoe/ocmock.git',
   'skia_revision': '7e1844439eaa3eb24d00c6314ddc81ca532fdd1b',
 
+  'updater_git': 'https://github.com/shorebirdtech/updater.git',
+  'updater_rev': '5055c397e8fe3d8c412a24c97096225ba9d7a076',
+
   # WARNING: DO NOT EDIT canvaskit_cipd_instance MANUALLY
   # See `lib/web_ui/README.md` for how to roll CanvasKit to a new version.
   'canvaskit_cipd_instance': 'ztaLvbs5GPmlAwUosC7VVp7EQnNVknRpNuKdv7vmzaAC',
@@ -549,6 +552,9 @@ deps = {
 
   'src/third_party/ocmock':
    Var('ocmock_git') + '@' +  Var('ocmock_rev'),
+
+  'src/third_party/updater':
+   Var('updater_git') + '@' +  Var('updater_rev'),
 
   'src/third_party/libjpeg-turbo':
    Var('fuchsia_git') + '/third_party/libjpeg-turbo' + '@' + '0fb821f3b2e570b2783a94ccd9a2fb1f4916ae9f',
