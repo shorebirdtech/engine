@@ -104,7 +104,7 @@ void ConfigureShorebird(std::string android_cache_path,
   fml::CreateDirectory(fml::paths::GetCachesDirectory(), {"shorebird_updater"},
                        fml::FilePermission::kReadWrite);
 
-  // Putting initialization into a block to make AppParameters lifetime clear.
+  // Using a block to make AppParameters lifetime explicit.
   {
     AppParameters app_parameters;
     app_parameters.release_version = version.c_str();
@@ -115,7 +115,7 @@ void ConfigureShorebird(std::string android_cache_path,
     for (const auto& string : settings.application_library_path) {
       c_paths.push_back(string.c_str());
     }
-    // Do not modify application_library_path or cstrings will be invalid.
+    // Do not modify application_library_path or c_strings will invalidate.
 
     app_parameters.original_libapp_paths = c_paths.data();
     app_parameters.original_libapp_paths_size = c_paths.size();
