@@ -170,6 +170,7 @@ public class FlutterJNI {
 
   private static native void nativeInit(
       @NonNull Context context,
+      @NonNull AssetManager assetManager,
       @NonNull String[] args,
       @Nullable String bundlePath,
       @NonNull String appStoragePath,
@@ -212,8 +213,9 @@ public class FlutterJNI {
     }
 
     String shorebirdYaml = null;
+    AssetManager assetManager = context.getAssets();
     try {
-      InputStream yaml = context.getAssets().open("flutter_assets/shorebird.yaml");
+      InputStream yaml = assetManager.open("flutter_assets/shorebird.yaml");
       BufferedReader r = new BufferedReader(new InputStreamReader(yaml));
       StringBuilder total = new StringBuilder();
       for (String line; (line = r.readLine()) != null; ) {
@@ -227,6 +229,7 @@ public class FlutterJNI {
 
     FlutterJNI.nativeInit(
         context,
+        assetManager,
         args,
         bundlePath,
         appStoragePath,

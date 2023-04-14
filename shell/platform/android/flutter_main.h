@@ -32,6 +32,7 @@ class FlutterMain {
   static void Init(JNIEnv* env,
                    jclass clazz,
                    jobject context,
+                   jobject assetManager,
                    jobjectArray jargs,
                    jstring kernelPath,
                    jstring appStoragePath,

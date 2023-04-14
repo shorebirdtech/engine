@@ -27,6 +27,7 @@
 #include "third_party/dart/runtime/include/dart_tools_api.h"
 #include "third_party/skia/include/core/SkFontMgr.h"
 
+#include <android/asset_manager_jni.h>
 #include "third_party/updater/library/include/updater.h"
 
 namespace flutter {
@@ -93,11 +94,42 @@ extern "C" __attribute__((weak)) unsigned long getauxval(unsigned long type) {
 }
 #endif
 
+static AAssetManager* g_asset_manager = nullptr;
+
+// Map AAsetManager to the updater library callbacks:
+
+void* OpenAsset(const char* name) {
+  FML_LOG(INFO) << "OpenAsset: " << name;
+  return AAssetManager_open(g_asset_manager, name, AASSET_MODE_RANDOM);
+}
+
+int GetAssetLength(void* asset) {
+  FML_LOG(INFO) << "GetAssetLength: " << asset;
+  return AAsset_getLength(static_cast<AAsset*>(asset));
+}
+
+int ReadAsset(void* asset, void* buffer, size_t size) {
+  FML_LOG(INFO) << "ReadAsset: " << asset << " " << buffer << " " << size;
+  return AAsset_read(static_cast<AAsset*>(asset), buffer, size);
+}
+
+off_t SeekAsset(void* asset, off_t offset, int whence) {
+  FML_LOG(INFO) << "SeekAsset: " << asset << " " << offset << " " << whence;
+  return AAsset_seek(static_cast<AAsset*>(asset), offset, whence);
+}
+
+void CloseAsset(void* asset) {
+  FML_LOG(INFO) << "CloseAsset: " << asset;
+  AAsset_close(static_cast<AAsset*>(asset));
+}
+
 // TODO: Move this out into a separate file?
-void ConfigureShorebird(std::string android_cache_path,
+void ConfigureShorebird(JNIEnv* env,
+                        std::string android_cache_path,
                         flutter::Settings& settings,
-                        std::string shorebirdYaml,
-                        std::string version) {
+                        std::string shorebird_yaml,
+                        std::string version,
+                        jobject java_asset_manager) {
   auto cache_dir =
       fml::paths::JoinPaths({android_cache_path, "shorebird_updater"});
 
@@ -106,6 +138,15 @@ void ConfigureShorebird(std::string android_cache_path,
 
   // Using a block to make AppParameters lifetime explicit.
   {
+    if (g_asset_manager == nullptr) {
+      // https://developer.android.com/ndk/reference/group/asset#group___asset_1gadfd6537af41577735bcaee52120127f4
+      // This leaks and might cause trouble at shutdown?
+      // Ideally we should use ApkAssetProvider but we're initializing too
+      // early to access that and would need to move our code first.
+      static fml::jni::ScopedJavaGlobalRef<jobject>* java_asset_manager_ref =
+          new fml::jni::ScopedJavaGlobalRef<jobject>(env, java_asset_manager);
+      g_asset_manager = AAssetManager_fromJava(env, java_asset_manager);
+    }
     AppParameters app_parameters;
     app_parameters.release_version = version.c_str();
     app_parameters.cache_dir = cache_dir.c_str();
@@ -117,13 +158,19 @@ void ConfigureShorebird(std::string android_cache_path,
     }
     // Do not modify application_library_path or c_strings will invalidate.
 
+    AssetProvider asset_provider;
+    asset_provider.open_asset = OpenAsset;
+    asset_provider.get_asset_length = GetAssetLength;
+    asset_provider.read_asset = ReadAsset;
+    asset_provider.seek_asset = SeekAsset;
+    asset_provider.close_asset = CloseAsset;
+
+    app_parameters.asset_provider = &asset_provider;
     app_parameters.original_libapp_paths = c_paths.data();
     app_parameters.original_libapp_paths_size = c_paths.size();
-
-    app_parameters.vm_path = "libflutter.so";  // Unused.
-
-    // shorebird_init copies from app_parameters and shorebirdYaml.
-    shorebird_init(&app_parameters, shorebirdYaml.c_str());
+    app_parameters.asset_provider = &asset_provider;
+    // shorebird_init copies from app_parameters and shorebird_yaml.
+    shorebird_init(&app_parameters, shorebird_yaml.c_str());
   }
 
   FML_LOG(INFO) << "Starting Shorebird update";
@@ -153,6 +200,7 @@ void ConfigureShorebird(std::string android_cache_path,
 void FlutterMain::Init(JNIEnv* env,
                        jclass clazz,
                        jobject context,
+                       jobject assetManager,
                        jobjectArray jargs,
                        jstring kernelPath,
                        jstring appStoragePath,
@@ -200,8 +248,8 @@ void FlutterMain::Init(JNIEnv* env,
 #if FLUTTER_RELEASE
   std::string shorebird_yaml = fml::jni::JavaStringToString(env, shorebirdYaml);
   std::string version_string = fml::jni::JavaStringToString(env, version);
-  ConfigureShorebird(android_cache_path, settings, shorebird_yaml,
-                     version_string);
+  ConfigureShorebird(env, android_cache_path, settings, shorebird_yaml,
+                     version_string, assetManager);
 #endif
 
   flutter::DartCallbackCache::LoadCacheFromDisk();
@@ -289,7 +337,8 @@ bool FlutterMain::Register(JNIEnv* env) {
   static const JNINativeMethod methods[] = {
       {
           .name = "nativeInit",
-          .signature = "(Landroid/content/Context;[Ljava/lang/String;Ljava/"
+          .signature = "(Landroid/content/Context;Landroid/content/res/"
+                       "AssetManager;[Ljava/lang/String;Ljava/"
                        "lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/"
                        "lang/String;Ljava/lang/String;J)V",
           .fnPtr = reinterpret_cast<void*>(&Init),
