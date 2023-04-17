@@ -21,7 +21,7 @@ vars = {
   'skia_revision': '7e1844439eaa3eb24d00c6314ddc81ca532fdd1b',
 
   'updater_git': 'https://github.com/shorebirdtech/updater.git',
-  'updater_rev': 'b19eb16654bd5220f5f7397ae0689c21050f5b8d',
+  'updater_rev': 'bc19f5df79005d65073debdc736f17ca6d827f89',
 
   # WARNING: DO NOT EDIT canvaskit_cipd_instance MANUALLY
   # See `lib/web_ui/README.md` for how to roll CanvasKit to a new version.
