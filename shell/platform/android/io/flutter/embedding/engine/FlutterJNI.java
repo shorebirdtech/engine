@@ -5,8 +5,8 @@
 package io.flutter.embedding.engine;
 
 import android.content.Context;
-import android.content.pm.PackageManager;
 import android.content.pm.PackageInfo;
+import android.content.pm.PackageManager;
 import android.content.res.AssetManager;
 import android.graphics.Bitmap;
 import android.graphics.ColorSpace;
@@ -209,7 +209,8 @@ public class FlutterJNI {
       // Should this be versionName or getLongVersionCode()?
       // versionName is human readable, but getLongVersionCode() is a
       // monotonically increasing number.
-      PackageInfo packageInfo = context.getPackageManager().getPackageInfo(context.getPackageName(), 0);
+      PackageInfo packageInfo =
+          context.getPackageManager().getPackageInfo(context.getPackageName(), 0);
       version = packageInfo.versionName;
       versionCode = packageInfo.getLongVersionCode();
     } catch (PackageManager.NameNotFoundException e) {
