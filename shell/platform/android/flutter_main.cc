@@ -131,6 +131,8 @@ void ConfigureShorebird(std::string android_cache_path,
   FML_LOG(INFO) << "Version" << version;
   FML_LOG(INFO) << "Version Code" << version_code;
 
+  shorebird_update();
+
   char* c_active_path = shorebird_active_path();
   if (c_active_path != NULL) {
     std::string active_path = c_active_path;
