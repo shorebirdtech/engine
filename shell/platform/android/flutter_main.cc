@@ -97,7 +97,8 @@ extern "C" __attribute__((weak)) unsigned long getauxval(unsigned long type) {
 void ConfigureShorebird(std::string android_cache_path,
                         flutter::Settings& settings,
                         std::string shorebirdYaml,
-                        std::string version) {
+                        std::string version,
+                        long version_code) {
   auto cache_dir =
       fml::paths::JoinPaths({android_cache_path, "shorebird_updater"});
 
@@ -148,6 +149,8 @@ void ConfigureShorebird(std::string android_cache_path,
   }
 
   FML_LOG(INFO) << "Starting Shorebird update";
+  FML_LOG(INFO) << "Version" << version;
+  FML_LOG(INFO) << "Version Code" << version_code;
   shorebird_start_update_thread();
 }
 
@@ -160,6 +163,7 @@ void FlutterMain::Init(JNIEnv* env,
                        jstring engineCachesPath,
                        jstring shorebirdYaml,
                        jstring version,
+                       jlong versionCode,
                        jlong initTimeMillis) {
   std::vector<std::string> args;
   args.push_back("flutter");
@@ -201,8 +205,9 @@ void FlutterMain::Init(JNIEnv* env,
 #if FLUTTER_RELEASE
   std::string shorebird_yaml = fml::jni::JavaStringToString(env, shorebirdYaml);
   std::string version_string = fml::jni::JavaStringToString(env, version);
+  long version_code = versionCode;
   ConfigureShorebird(android_cache_path, settings, shorebird_yaml,
-                     version_string);
+                     version_string, version_code);
 #endif
 
   flutter::DartCallbackCache::LoadCacheFromDisk();
@@ -292,7 +297,7 @@ bool FlutterMain::Register(JNIEnv* env) {
           .name = "nativeInit",
           .signature = "(Landroid/content/Context;[Ljava/lang/String;Ljava/"
                        "lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/"
-                       "lang/String;Ljava/lang/String;J)V",
+                       "lang/String;Ljava/lang/String;JJ)V",
           .fnPtr = reinterpret_cast<void*>(&Init),
       },
       {
