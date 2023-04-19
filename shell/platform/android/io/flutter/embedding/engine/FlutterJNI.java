@@ -5,6 +5,7 @@
 package io.flutter.embedding.engine;
 
 import android.content.Context;
+import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.res.AssetManager;
 import android.graphics.Bitmap;
@@ -176,6 +177,7 @@ public class FlutterJNI {
       @NonNull String engineCachesPath,
       @Nullable String shorebirdYaml,
       @Nullable String version,
+      long versionCode,
       long initTimeMillis);
 
   /**
@@ -202,11 +204,15 @@ public class FlutterJNI {
     }
 
     String version = null;
+    long versionCode = 1;
     try {
       // Should this be versionName or getLongVersionCode()?
       // versionName is human readable, but getLongVersionCode() is a
       // monotonically increasing number.
-      version = context.getPackageManager().getPackageInfo(context.getPackageName(), 0).versionName;
+      PackageInfo packageInfo =
+          context.getPackageManager().getPackageInfo(context.getPackageName(), 0);
+      version = packageInfo.versionName;
+      versionCode = packageInfo.getLongVersionCode();
     } catch (PackageManager.NameNotFoundException e) {
       Log.e(TAG, "Failed to read app version.  Shorebird updater can't run.", e);
     }
@@ -233,6 +239,7 @@ public class FlutterJNI {
         engineCachesPath,
         shorebirdYaml,
         version,
+        versionCode,
         initTimeMillis);
     FlutterJNI.initCalled = true;
   }

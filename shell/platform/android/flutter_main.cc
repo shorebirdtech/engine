@@ -97,7 +97,8 @@ extern "C" __attribute__((weak)) unsigned long getauxval(unsigned long type) {
 void ConfigureShorebird(std::string android_cache_path,
                         flutter::Settings& settings,
                         std::string shorebirdYaml,
-                        std::string version) {
+                        std::string version,
+                        long version_code) {
   auto cache_dir =
       fml::paths::JoinPaths({android_cache_path, "shorebird_updater"});
 
@@ -107,7 +108,8 @@ void ConfigureShorebird(std::string android_cache_path,
   // Using a block to make AppParameters lifetime explicit.
   {
     AppParameters app_parameters;
-    app_parameters.release_version = version.c_str();
+    app_parameters.version_name = version.c_str();
+    app_parameters.version_code = version_code;
     app_parameters.cache_dir = cache_dir.c_str();
 
     // https://stackoverflow.com/questions/26032039/convert-vectorstring-into-char-c
@@ -120,13 +122,14 @@ void ConfigureShorebird(std::string android_cache_path,
     app_parameters.original_libapp_paths = c_paths.data();
     app_parameters.original_libapp_paths_size = c_paths.size();
 
-    app_parameters.vm_path = "libflutter.so";  // Unused.
-
     // shorebird_init copies from app_parameters and shorebirdYaml.
     shorebird_init(&app_parameters, shorebirdYaml.c_str());
   }
 
   FML_LOG(INFO) << "Starting Shorebird update";
+  FML_LOG(INFO) << "Version" << version;
+  FML_LOG(INFO) << "Version Code" << version_code;
+
   shorebird_update();
 
   char* c_active_path = shorebird_active_path();
@@ -159,6 +162,7 @@ void FlutterMain::Init(JNIEnv* env,
                        jstring engineCachesPath,
                        jstring shorebirdYaml,
                        jstring version,
+                       jlong versionCode,
                        jlong initTimeMillis) {
   std::vector<std::string> args;
   args.push_back("flutter");
@@ -200,8 +204,9 @@ void FlutterMain::Init(JNIEnv* env,
 #if FLUTTER_RELEASE
   std::string shorebird_yaml = fml::jni::JavaStringToString(env, shorebirdYaml);
   std::string version_string = fml::jni::JavaStringToString(env, version);
+  long version_code = versionCode;
   ConfigureShorebird(android_cache_path, settings, shorebird_yaml,
-                     version_string);
+                     version_string, version_code);
 #endif
 
   flutter::DartCallbackCache::LoadCacheFromDisk();
@@ -291,7 +296,7 @@ bool FlutterMain::Register(JNIEnv* env) {
           .name = "nativeInit",
           .signature = "(Landroid/content/Context;[Ljava/lang/String;Ljava/"
                        "lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/"
-                       "lang/String;Ljava/lang/String;J)V",
+                       "lang/String;Ljava/lang/String;JJ)V",
           .fnPtr = reinterpret_cast<void*>(&Init),
       },
       {
