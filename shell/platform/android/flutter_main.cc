@@ -108,7 +108,8 @@ void ConfigureShorebird(std::string android_cache_path,
   // Using a block to make AppParameters lifetime explicit.
   {
     AppParameters app_parameters;
-    app_parameters.release_version = version.c_str();
+    app_parameters.version_name = version.c_str();
+    app_parameters.version_code = version_code;
     app_parameters.cache_dir = cache_dir.c_str();
 
     // https://stackoverflow.com/questions/26032039/convert-vectorstring-into-char-c
@@ -120,8 +121,6 @@ void ConfigureShorebird(std::string android_cache_path,
 
     app_parameters.original_libapp_paths = c_paths.data();
     app_parameters.original_libapp_paths_size = c_paths.size();
-
-    app_parameters.vm_path = "libflutter.so";  // Unused.
 
     // shorebird_init copies from app_parameters and shorebirdYaml.
     shorebird_init(&app_parameters, shorebirdYaml.c_str());
@@ -297,7 +296,7 @@ bool FlutterMain::Register(JNIEnv* env) {
           .name = "nativeInit",
           .signature = "(Landroid/content/Context;[Ljava/lang/String;Ljava/"
                        "lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/"
-                       "lang/String;Ljava/lang/String;J;J)V",
+                       "lang/String;Ljava/lang/String;JJ)V",
           .fnPtr = reinterpret_cast<void*>(&Init),
       },
       {
