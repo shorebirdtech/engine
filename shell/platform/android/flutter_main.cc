@@ -108,7 +108,10 @@ void ConfigureShorebird(std::string android_cache_path,
   // Using a block to make AppParameters lifetime explicit.
   {
     AppParameters app_parameters;
-    app_parameters.release_version = version.c_str();
+    // Combine version and version_code into a single string.
+    // We could also pass these separately through to the updater if needed.
+    auto release_version = version + "+" + std::to_string(version_code);
+    app_parameters.release_version = release_version.c_str();
     app_parameters.cache_dir = cache_dir.c_str();
 
     // https://stackoverflow.com/questions/26032039/convert-vectorstring-into-char-c
@@ -149,8 +152,6 @@ void ConfigureShorebird(std::string android_cache_path,
   }
 
   FML_LOG(INFO) << "Starting Shorebird update";
-  FML_LOG(INFO) << "Version" << version;
-  FML_LOG(INFO) << "Version Code" << version_code;
   shorebird_start_update_thread();
 }
 
