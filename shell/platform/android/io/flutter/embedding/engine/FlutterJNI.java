@@ -225,6 +225,7 @@ public class FlutterJNI {
       Log.w(TAG, "shorebird.yaml: " + shorebirdYaml);
     } catch (IOException e) {
       Log.e(TAG, "Failed to load shorebird.yaml", e);
+      Log.e(TAG, "Did you remember to include shorebird.yaml in your pubspec.yaml's assets?");
     }
 
     FlutterJNI.nativeInit(

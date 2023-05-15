@@ -204,11 +204,16 @@ void FlutterMain::Init(JNIEnv* env,
   fml::paths::InitializeAndroidCachesPath(android_cache_path);
 
 #if FLUTTER_RELEASE
-  std::string shorebird_yaml = fml::jni::JavaStringToString(env, shorebirdYaml);
-  std::string version_string = fml::jni::JavaStringToString(env, version);
-  long version_code = versionCode;
-  ConfigureShorebird(android_cache_path, settings, shorebird_yaml,
-                     version_string, version_code);
+  if (shorebirdYaml) {
+    std::string shorebird_yaml = fml::jni::JavaStringToString(env, shorebirdYaml);
+    std::string version_string = fml::jni::JavaStringToString(env, version);
+    long version_code = versionCode;
+    ConfigureShorebird(android_cache_path, settings, shorebird_yaml,
+                      version_string, version_code);
+  } else {
+    __android_log_print(ANDROID_LOG_ERROR,
+        "Flutter", "No Shorebird.yaml provided");
+  }
 #endif
 
   flutter::DartCallbackCache::LoadCacheFromDisk();
