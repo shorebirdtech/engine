@@ -205,7 +205,10 @@ flutter::Settings FLTDefaultSettingsForBundle(NSBundle* bundle, NSProcessInfo* p
   NSString* assetsPath = [NSString stringWithUTF8String:settings.assets_path.c_str()];
   NSLog(@"ASSET PATH %@", assetsPath);
 
-  std::string cache_path = fml::paths::JoinPaths({getenv("HOME"), "Library/Caches/shorebird"});
+  // /private/var/mobile/Containers/Data/Application/264477BF-6E38-47C9-AAD9-532BB842F197/Library/Application
+  // Support/shorebird/shorebird_updater
+  std::string cache_path =
+      fml::paths::JoinPaths({getenv("HOME"), "Library/Application Support/shorebird"});
   NSURL* shorebirdYamlPath = [NSURL URLWithString:@"shorebird.yaml"
                                     relativeToURL:[NSURL fileURLWithPath:assetsPath]];
   NSString* appVersion = [mainBundle objectForInfoDictionaryKey:@"CFBundleShortVersionString"];
@@ -221,18 +224,6 @@ flutter::Settings FLTDefaultSettingsForBundle(NSBundle* bundle, NSProcessInfo* p
                                 appVersion.UTF8String, version_code);
   } else {
     NSLog(@"Failed to find shorebird.yaml, not starting updater.");
-  }
-
-  // Hack, just replacing the snapshot for a demo.
-  NSURL* appElfLib = [NSURL URLWithString:@"out.aot"
-                            relativeToURL:[NSURL fileURLWithPath:assetsPath]];
-  if ([[NSFileManager defaultManager] fileExistsAtPath:appElfLib.path]) {
-    settings.application_library_path.clear();
-    settings.application_library_path.push_back(appElfLib.path.UTF8String);
-    NSLog(@"Replaced snapshot with: %@", appElfLib.path);
-  } else {
-    NSLog(@"Failed to find snapshot: %@", appElfLib.path);
-    abort();
   }
 
   // Domain network configuration
