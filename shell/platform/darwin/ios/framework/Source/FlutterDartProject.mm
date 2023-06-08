@@ -206,7 +206,8 @@ flutter::Settings FLTDefaultSettingsForBundle(NSBundle* bundle, NSProcessInfo* p
   NSLog(@"ASSET PATH %@", assetsPath);
 
   // FIXME: This may not be the correct path (e.g., should it include the organization id?)
-  // See https://developer.apple.com/library/archive/documentation/FileManagement/Conceptual/FileSystemProgrammingGuide/FileSystemOverview/FileSystemOverview.html#//apple_ref/doc/uid/TP40010672-CH2-SW13
+  // See
+  // https://developer.apple.com/library/archive/documentation/FileManagement/Conceptual/FileSystemProgrammingGuide/FileSystemOverview/FileSystemOverview.html#//apple_ref/doc/uid/TP40010672-CH2-SW13
   // /private/var/mobile/Containers/Data/Application/264477BF-6E38-47C9-AAD9-532BB842F197/Library/Application
   // Support/shorebird/shorebird_updater
   std::string cache_path =
