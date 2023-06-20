@@ -11,6 +11,7 @@
     _binary_icudtl_dat_size;
     
     shorebird_check_for_update;
+    shorebird_current_boot_patch_number;
     shorebird_free_string;
     shorebird_next_boot_patch_number;
     shorebird_update;
