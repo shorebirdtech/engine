@@ -78,12 +78,9 @@ void ConfigureShorebird(std::string cache_path,
     std::string active_path = c_active_path;
     shorebird_free_string(c_active_path);
     FML_LOG(INFO) << "Shorebird updater: active path: " << active_path;
-    char* c_patch_number = shorebird_next_boot_patch_number();
-    if (c_patch_number != NULL) {
-      std::string patch_number = c_patch_number;
-      shorebird_free_string(c_patch_number);
-      FML_LOG(INFO) << "Shorebird updater: active patch number: "
-                    << patch_number;
+    uintptr_t patch_number = shorebird_next_boot_patch_number();
+    if (patch_number != 0) {
+      FML_LOG(INFO) << "Shorebird updater: next patch number: " << patch_number;
     }
 
     settings.application_library_path.clear();
