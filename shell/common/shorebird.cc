@@ -40,15 +40,13 @@ extern "C" __attribute__((weak)) unsigned long getauxval(unsigned long type) {
 }
 #endif
 
-/// Gets the filename of the last item in the list of application library paths.
-/// This is based on the understanding that this list will first contain the
-/// library's filename itself, followed by an absolute path to the library.
+/// Gets the filename of the first item in the list of application library
+/// paths. This is based on the understanding that this list will first contain
+/// the library's filename itself, followed by an absolute path to the library.
 /// Because we pass the absolute path to our Rust code, that path is the one we
 /// care about.
 std::string AppLibraryFilename(std::vector<std::string> libapp_paths) {
-  // FIXME: resolve the full path from the first item in this list (the filename
-  // itself) and pass that to Rust. See updater.rs for more details.
-  std::filesystem::path path(libapp_paths.back());
+  std::filesystem::path path(libapp_paths.front());
   return path.filename().string();
 }
 
@@ -57,7 +55,7 @@ std::string AppLibraryFilename(std::vector<std::string> libapp_paths) {
 ///
 /// On Android, this is "libapp.so".
 /// On iOS, this is "App".
-bool IsRunningApp(std::string filename) {
+bool IsSupportedAppPath(std::string filename) {
 // Check for the filename we expect on the current platform.
 #if defined(__ANDROID__)
   return filename == "libapp.so";
@@ -75,6 +73,18 @@ void ConfigureShorebird(std::string cache_path,
                         const std::string& shorebird_yaml,
                         const std::string& version,
                         int64_t version_code) {
+  // If we don't believe that we're running a full Flutter app, warn the user
+  // and don't try to initialize Shorebird.
+  std::string app_library_filename =
+      AppLibraryFilename(settings.application_library_path);
+  if (!IsSupportedAppPath(app_library_filename)) {
+    FML_LOG(WARNING)
+        << "Shorebird updater: application library detected is not "
+           "libapp.so, not running shorebird_init (detected "
+        << app_library_filename << ").";
+    return;
+  }
+  
   auto cache_dir =
       fml::paths::JoinPaths({std::move(cache_path), "shorebird_updater"});
 
@@ -99,18 +109,6 @@ void ConfigureShorebird(std::string cache_path,
 
     app_parameters.original_libapp_paths = c_paths.data();
     app_parameters.original_libapp_paths_size = c_paths.size();
-
-    // If we don't believe that we're running a full Flutter app, warn the user
-    // and don't try to initialize Shorebird.
-    std::string app_library_filename =
-        AppLibraryFilename(settings.application_library_path);
-    if (!IsRunningApp(app_library_filename)) {
-      FML_LOG(WARNING)
-          << "Shorebird updater: application library detected is not "
-             "libapp.so, not running shorebird_init (detected "
-          << app_library_filename << ").";
-      return;
-    }
 
     // shorebird_init copies from app_parameters and shorebirdYaml.
     shorebird_init(&app_parameters, shorebird_yaml.c_str());
