@@ -84,7 +84,7 @@ void ConfigureShorebird(std::string cache_path,
         << app_library_filename << ").";
     return;
   }
-  
+
   auto cache_dir =
       fml::paths::JoinPaths({std::move(cache_path), "shorebird_updater"});
 
