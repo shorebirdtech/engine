@@ -46,8 +46,8 @@ extern "C" __attribute__((weak)) unsigned long getauxval(unsigned long type) {
 /// Because we pass the absolute path to our Rust code, that path is the one we
 /// care about.
 std::string AppLibraryFilename(std::vector<std::string> libapp_paths) {
-// FIXME: resolve the full path from the first item in this list (the filename
-// itself) and pass that to Rust. See updater.rs for more details.
+  // FIXME: resolve the full path from the first item in this list (the filename
+  // itself) and pass that to Rust. See updater.rs for more details.
   std::filesystem::path path(libapp_paths.back());
   return path.filename().string();
 }
