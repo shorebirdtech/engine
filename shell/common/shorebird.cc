@@ -1,6 +1,7 @@
 
 #include "flutter/shell/common/shorebird.h"
 
+#include <filesystem>
 #include <optional>
 #include <vector>
 
@@ -39,11 +40,51 @@ extern "C" __attribute__((weak)) unsigned long getauxval(unsigned long type) {
 }
 #endif
 
+/// Gets the filename of the first item in the list of application library
+/// paths. This is based on the understanding that this list will first contain
+/// the library's filename itself, followed by an absolute path to the library.
+/// Because we pass the absolute path to our Rust code, that path is the one we
+/// care about.
+std::string AppLibraryFilename(std::vector<std::string> libapp_paths) {
+  std::filesystem::path path(libapp_paths.front());
+  return path.filename().string();
+}
+
+/// Checks whether the application library has a filename that matches what we
+/// expect to see for a Flutter app on the current platform.
+///
+/// On Android, this is "libapp.so".
+/// On iOS, this is "App".
+bool IsSupportedAppPath(std::string filename) {
+// Check for the filename we expect on the current platform.
+#if defined(__ANDROID__)
+  return filename == "libapp.so";
+#elif defined(__APPLE__)
+  return filename == "App";
+#endif
+
+  // If we aren't on Android or iOS, we're in an unfamiliar environment and
+  // shouldn't assume we're running a Flutter app.
+  return false;
+}
+
 void ConfigureShorebird(std::string cache_path,
                         flutter::Settings& settings,
                         const std::string& shorebird_yaml,
                         const std::string& version,
                         int64_t version_code) {
+  // If we don't believe that we're running a full Flutter app, warn the user
+  // and don't try to initialize Shorebird.
+  std::string app_library_filename =
+      AppLibraryFilename(settings.application_library_path);
+  if (!IsSupportedAppPath(app_library_filename)) {
+    FML_LOG(WARNING)
+        << "Shorebird updater: application library detected is not "
+           "libapp.so, not running shorebird_init (detected "
+        << app_library_filename << ").";
+    return;
+  }
+
   auto cache_dir =
       fml::paths::JoinPaths({std::move(cache_path), "shorebird_updater"});
 
