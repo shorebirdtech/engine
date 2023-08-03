@@ -106,7 +106,8 @@ void ConfigureShorebird(std::string cache_path,
     FML_LOG(INFO) << "Starting Shorebird update";
     shorebird_start_update_thread();
   } else {
-    FML_LOG(INFO) << "Shorebird auto_update disabled, not checking for updates.";
+    FML_LOG(INFO)
+        << "Shorebird auto_update disabled, not checking for updates.";
   }
 }
 
