@@ -233,8 +233,6 @@ public class FlutterJNI {
       Log.e(TAG, "Did you remember to include shorebird.yaml in your pubspec.yaml's assets?");
     }
 
-    Log.e(TAG, "initializing with version code " + versionCode);
-
     FlutterJNI.nativeInit(
         context,
         args,
