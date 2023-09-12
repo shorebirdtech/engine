@@ -123,16 +123,17 @@ void FlutterMain::Init(JNIEnv* env,
   flutter::DartCallbackCache::SetCachePath(
       fml::jni::JavaStringToString(env, appStoragePath));
 
-  auto android_cache_path = fml::jni::JavaStringToString(env, appStoragePath);
-  fml::paths::InitializeAndroidCachesPath(android_cache_path);
+  auto code_cache_path = fml::jni::JavaStringToString(env, engineCachesPath);
+  auto app_storage_path = fml::jni::JavaStringToString(env, appStoragePath);
+  fml::paths::InitializeAndroidCachesPath(code_cache_path);
 
 #if FLUTTER_RELEASE
   std::string shorebird_yaml = fml::jni::JavaStringToString(env, shorebirdYaml);
   std::string version_string = fml::jni::JavaStringToString(env, version);
   std::string version_code_string =
       fml::jni::JavaStringToString(env, versionCode);
-  ConfigureShorebird(android_cache_path, settings, shorebird_yaml,
-                     version_string, version_code_string);
+  ConfigureShorebird(code_cache_path, app_storage_path, settings,
+                     shorebird_yaml, version_string, version_code_string);
 #endif
 
   flutter::DartCallbackCache::LoadCacheFromDisk();

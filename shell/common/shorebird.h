@@ -5,7 +5,8 @@
 
 namespace flutter {
 
-void ConfigureShorebird(std::string cache_path,
+void ConfigureShorebird(std::string code_cache_path,
+                        std::string app_storage_path,
                         flutter::Settings& settings,
                         const std::string& shorebird_yaml,
                         const std::string& version,
