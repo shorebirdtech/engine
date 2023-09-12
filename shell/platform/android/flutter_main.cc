@@ -123,7 +123,7 @@ void FlutterMain::Init(JNIEnv* env,
   flutter::DartCallbackCache::SetCachePath(
       fml::jni::JavaStringToString(env, appStoragePath));
 
-  auto android_cache_path = fml::jni::JavaStringToString(env, engineCachesPath);
+  auto android_cache_path = fml::jni::JavaStringToString(env, appStoragePath);
   fml::paths::InitializeAndroidCachesPath(android_cache_path);
 
 #if FLUTTER_RELEASE
