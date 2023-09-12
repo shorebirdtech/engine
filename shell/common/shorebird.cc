@@ -39,15 +39,21 @@ extern "C" __attribute__((weak)) unsigned long getauxval(unsigned long type) {
 }
 #endif
 
-void ConfigureShorebird(std::string cache_path,
+void ConfigureShorebird(std::string code_cache_path,
+                        std::string app_storage_path,
                         flutter::Settings& settings,
                         const std::string& shorebird_yaml,
                         const std::string& version,
                         const std::string& version_code) {
-  auto cache_dir =
-      fml::paths::JoinPaths({std::move(cache_path), "shorebird_updater"});
+  auto shorebird_updater_dir_name = "shorebird_updater";
 
-  fml::CreateDirectory(fml::paths::GetCachesDirectory(), {"shorebird_updater"},
+  auto code_cache_dir = fml::paths::JoinPaths(
+      {std::move(code_cache_path), shorebird_updater_dir_name});
+  auto app_storage_dir = fml::paths::JoinPaths(
+      {std::move(app_storage_path), shorebird_updater_dir_name});
+
+  fml::CreateDirectory(fml::paths::GetCachesDirectory(),
+                       {shorebird_updater_dir_name},
                        fml::FilePermission::kReadWrite);
 
   // Using a block to make AppParameters lifetime explicit.
@@ -57,7 +63,8 @@ void ConfigureShorebird(std::string cache_path,
     // We could also pass these separately through to the updater if needed.
     auto release_version = version + "+" + version_code;
     app_parameters.release_version = release_version.c_str();
-    app_parameters.cache_dir = cache_dir.c_str();
+    app_parameters.code_cache_dir = code_cache_dir.c_str();
+    app_parameters.app_storage_dir = app_storage_dir.c_str();
 
     // https://stackoverflow.com/questions/26032039/convert-vectorstring-into-char-c
     std::vector<const char*> c_paths{};
