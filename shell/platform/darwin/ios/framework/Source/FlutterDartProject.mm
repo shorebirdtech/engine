@@ -179,13 +179,14 @@ flutter::Settings FLTDefaultSettingsForBundle(NSBundle* bundle, NSProcessInfo* p
   NSLog(@"!!!!");
   NSLog(@"!!!!");
   NSLog(@"!!!!");
-  NSString *bundlePath = [[NSBundle mainBundle] bundlePath];
+  NSString* bundlePath = [[NSBundle mainBundle] bundlePath];
   NSLog(@"Bundle path: %@", bundlePath);
-  NSString *appPath = [NSString stringWithFormat:@"%@/Frameworks/App.framework/App", [[NSBundle mainBundle] bundlePath]];
+  NSString* appPath = [NSString
+      stringWithFormat:@"%@/Frameworks/App.framework/App", [[NSBundle mainBundle] bundlePath]];
   NSLog(@"App path: %@", appPath);
 
-  NSURL *fileUrl = [NSURL fileURLWithPath:appPath];
-  NSData *fileData = [NSData dataWithContentsOfURL:fileUrl];
+  NSURL* fileUrl = [NSURL fileURLWithPath:appPath];
+  NSData* fileData = [NSData dataWithContentsOfURL:fileUrl];
   NSLog(@"file contents: %@", fileData);
   NSLog(@"!!!!");
   NSLog(@"!!!!");
