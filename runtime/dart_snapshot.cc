@@ -57,6 +57,12 @@ static std::shared_ptr<const fml::Mapping> SearchMapping(
     const std::vector<std::string>& native_library_path,
     const char* native_library_symbol_name,
     bool is_executable) {
+  FML_LOG(ERROR) << "!!!!";
+  FML_LOG(ERROR) << "!!!!";
+  FML_LOG(ERROR) << "!!!!";
+  FML_LOG(ERROR) << "!!!!";
+  FML_LOG(ERROR) << "!!!!";
+  FML_LOG(ERROR) << "In SearchMapping";
   // Quick hack to make this only included in device builds.
 #if FML_OS_IOS
   // Don't use our terrible elf hacks when loading from the IPA itself.
@@ -73,29 +79,42 @@ static std::shared_ptr<const fml::Mapping> SearchMapping(
                                 &vm_isolate_data, &vm_isolate_instrs,
                                 /* load as read-only, not rx */ true);
       if (leaked_elf != nullptr) {
-        FML_LOG(INFO) << "Loaded ELF";
+        FML_LOG(ERROR) << "Loaded ELF";
       } else {
         FML_LOG(FATAL) << "Failed to load ELF" << error;
         abort();
       }
     }
 
-    FML_LOG(INFO) << "Loading symbol from ELF " << native_library_symbol_name;
+    FML_LOG(ERROR) << "Loading symbol from ELF " << native_library_symbol_name;
 
     if (native_library_symbol_name == DartSnapshot::kVMDataSymbol) {
-      return std::make_unique<const fml::NonOwnedMapping>(vm_snapshot_data, 0,
-                                                          nullptr, true);
+      FML_LOG(ERROR) << "Returning vm_snapshot_data";
+      auto ret = std::make_unique<const fml::NonOwnedMapping>(vm_snapshot_data,
+                                                              0, nullptr, true);
+      FML_LOG(ERROR) << "ret is " << ret;
+      return ret;
     } else if (native_library_symbol_name ==
                DartSnapshot::kVMInstructionsSymbol) {
-      return std::make_unique<const fml::NonOwnedMapping>(vm_snapshot_instrs, 0,
-                                                          nullptr, true);
+      FML_LOG(ERROR) << "Returning vm_snapshot_instrs";
+      auto ret = std::make_unique<const fml::NonOwnedMapping>(
+          vm_snapshot_instrs, 0, nullptr, true);
+
+      FML_LOG(ERROR) << "ret is " << ret;
+      return ret;
     } else if (native_library_symbol_name == DartSnapshot::kIsolateDataSymbol) {
-      return std::make_unique<const fml::NonOwnedMapping>(vm_isolate_data, 0,
-                                                          nullptr, true);
+      FML_LOG(ERROR) << "Returning vm_isolate_data";
+      auto ret = std::make_unique<const fml::NonOwnedMapping>(vm_isolate_data,
+                                                              0, nullptr, true);
+      FML_LOG(ERROR) << "ret is " << ret;
+      return ret;
     } else if (native_library_symbol_name ==
                DartSnapshot::kIsolateInstructionsSymbol) {
-      return std::make_unique<const fml::NonOwnedMapping>(vm_isolate_instrs, 0,
-                                                          nullptr, true);
+      FML_LOG(ERROR) << "Returning vm_isolate_instrs";
+      auto ret = std::make_unique<const fml::NonOwnedMapping>(vm_isolate_instrs,
+                                                              0, nullptr, true);
+      FML_LOG(ERROR) << "ret is " << ret;
+      return ret;
     }
   }
 #endif

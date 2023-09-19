@@ -175,6 +175,23 @@ flutter::Settings FLTDefaultSettingsForBundle(NSBundle* bundle, NSProcessInfo* p
   NSString* shorebirdYamlContents = [NSString stringWithContentsOfURL:shorebirdYamlPath
                                                              encoding:NSUTF8StringEncoding
                                                                 error:nil];
+  NSLog(@"!!!!");
+  NSLog(@"!!!!");
+  NSLog(@"!!!!");
+  NSLog(@"!!!!");
+  NSString *bundlePath = [[NSBundle mainBundle] bundlePath];
+  NSLog(@"Bundle path: %@", bundlePath);
+  NSString *appPath = [NSString stringWithFormat:@"%@/Frameworks/App.framework/App", [[NSBundle mainBundle] bundlePath]];
+  NSLog(@"App path: %@", appPath);
+
+  NSURL *fileUrl = [NSURL fileURLWithPath:appPath];
+  NSData *fileData = [NSData dataWithContentsOfURL:fileUrl];
+  NSLog(@"file contents: %@", fileData);
+  NSLog(@"!!!!");
+  NSLog(@"!!!!");
+  NSLog(@"!!!!");
+  NSLog(@"!!!!");
+
   if (shorebirdYamlContents != nil) {
     // Note: we intentionally pass cache_path twice. We provide two different directories
     //   to ConfigureShorebird because Android differentiates between data that persists
