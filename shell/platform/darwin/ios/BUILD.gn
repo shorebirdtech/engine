@@ -195,6 +195,16 @@ source_set("flutter_framework_source") {
     "//flutter:config",
   ]
 
+  if (target_cpu == "arm64") {
+    deps += [ ":relink_rust_static_library" ]
+    sources += [ "$target_out_dir/libupdater.o" ]
+  } else if (target_cpu == "x64") {
+    libs =
+        [ "//third_party/updater/target/x86_64-apple-ios/release/libupdater.a" ]
+  } else {
+    assert(false, "Unsupported target_cpu")
+  }
+
   frameworks = [
     "AudioToolbox.framework",
     "CoreMedia.framework",
@@ -207,6 +217,26 @@ source_set("flutter_framework_source") {
     # Usage in release builds will cause rejection from the App Store.
     frameworks += [ "IOKit.framework" ]
   }
+}
+
+action("relink_rust_static_library") {
+  script = "//third_party/updater/library/relink_static_library.py"
+  visibility = [ ":*" ]
+  sources = [
+    "//third_party/updater/library/symbols.exports",
+    "//third_party/updater/target/aarch64-apple-ios/release/libupdater.a",
+  ]
+  outputs = [ "$target_out_dir/libupdater.o" ]
+  args = [
+    "--input",
+    rebase_path(sources[1]),
+    "--symbols-file",
+    rebase_path(outputs[0]),
+    "--arch",
+    "arm64",
+    "--output",
+    rebase_path(outputs[0]),
+  ]
 }
 
 platform_frameworks_path =
