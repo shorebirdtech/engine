@@ -20,7 +20,11 @@ vars = {
   'ocmock_git': 'https://github.com/erikdoe/ocmock.git',
   'skia_revision': 'd58324bf653df78837bcf46685ca6141d86540ba',
 
-  'dart_sdk_revision': '5527fc41a422173a54b6cd8c80f639a1b3b196bb',
+  # dart_sdk_revision is a shorebird invention, we use this to separate
+  # from dart_git and dart_revision which upstream uses.  We have to be
+  # careful that our dart_sdk_revision is aligned with whatever dependencies
+  # are pulled from dart_git.
+  'dart_sdk_revision': '8ded6a6c070a8b37be31612a40a20f4cae350bcf',
   'dart_sdk_git': 'git@github.com:shorebirdtech/dart-sdk.git',
   'updater_git': 'https://github.com/shorebirdtech/updater.git',
   'updater_rev': '53072a91281922025155477ea2ba009f690c8eed',
