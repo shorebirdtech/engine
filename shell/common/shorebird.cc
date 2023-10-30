@@ -12,6 +12,7 @@
 #include "flutter/fml/paths.h"
 #include "flutter/fml/size.h"
 #include "flutter/lib/ui/plugins/callback_cache.h"
+#include "flutter/runtime/dart_snapshot.h"
 #include "flutter/runtime/dart_vm.h"
 #include "flutter/shell/common/shell.h"
 #include "flutter/shell/common/switches.h"
@@ -39,13 +40,29 @@ extern "C" __attribute__((weak)) unsigned long getauxval(unsigned long type) {
 }
 #endif
 
+void SetBaseSnapshot(Settings& settings) {
+  // These mappings happen to be to static data in the App.framework, so we
+  // probably don't have to hold onto the DartSnapshot objects.
+  auto vm_snapshot = DartSnapshot::VMSnapshotFromSettings(settings);
+  auto isolate_snapshot = DartSnapshot::IsolateSnapshotFromSettings(settings);
+  Shorebird_SetBaseSnapshots(isolate_snapshot->GetDataMapping(),
+                             isolate_snapshot->GetInstructionsMapping(),
+                             vm_snapshot->GetDataMapping(),
+                             vm_snapshot->GetInstructionsMapping());
+}
+
 void ConfigureShorebird(std::string code_cache_path,
                         std::string app_storage_path,
-                        flutter::Settings& settings,
+                        Settings& settings,
                         const std::string& shorebird_yaml,
                         const std::string& version,
                         const std::string& version_code) {
   auto shorebird_updater_dir_name = "shorebird_updater";
+
+  // We only set the base snapshot on iOS for now.
+#if FML_OS_IOS
+  SetBaseSnapshot(settings);
+#endif
 
   auto code_cache_dir = fml::paths::JoinPaths(
       {std::move(code_cache_path), shorebird_updater_dir_name});
