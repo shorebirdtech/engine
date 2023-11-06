@@ -88,14 +88,10 @@ group("flutter") {
 
         # path_ops
         "//flutter/tools/path_ops",
-      ]
 
-      if (host_os == "linux") {
-        public_deps += [
-          # Built alongside gen_snapshot for 64 bit targets
-          "//third_party/dart/runtime/bin:analyze_snapshot",
-        ]
-      }
+        # Built alongside gen_snapshot arm64 targets.
+        "//third_party/dart/runtime/bin:analyze_snapshot",
+      ]
 
       if (full_dart_sdk) {
         public_deps += [ "//flutter/web_sdk" ]
