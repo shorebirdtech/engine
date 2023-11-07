@@ -45,6 +45,11 @@ void SetBaseSnapshot(Settings& settings) {
   // probably don't have to hold onto the DartSnapshot objects.
   auto vm_snapshot = DartSnapshot::VMSnapshotFromSettings(settings);
   auto isolate_snapshot = DartSnapshot::IsolateSnapshotFromSettings(settings);
+  assert(vm_snapshot);
+  // If you are crashing here, you probably are running Shorebird in a Debug
+  // config, where the AOT snapshot won't be linked into the process, and thus
+  // lookups will fail.  Change your Scheme to Release to fix:
+  // https://github.com/flutter/flutter/wiki/Debugging-the-engine#debugging-ios-builds-with-xcode
   Shorebird_SetBaseSnapshots(isolate_snapshot->GetDataMapping(),
                              isolate_snapshot->GetInstructionsMapping(),
                              vm_snapshot->GetDataMapping(),
