@@ -282,6 +282,8 @@ if (host_os == "win") {
       "//third_party/dart/runtime/bin:analyze_snapshot($host_toolchain)"
 
   copy("analyze_snapshot") {
+    deps = [ _analyze_snapshot_target ]
+
     analyze_snapshot_out_dir =
         get_label_info(_analyze_snapshot_target, "root_out_dir")
     sources = [ "$analyze_snapshot_out_dir/analyze_snapshot.exe" ]
