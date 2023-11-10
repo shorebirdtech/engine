@@ -66,7 +66,9 @@ void ConfigureShorebird(std::string code_cache_path,
 
   // We only set the base snapshot on iOS for now.
 #if FML_OS_IOS
-  SetBaseSnapshot(settings);
+  // This should set the base snapshot for the Shorebird updater, but
+  // right now it causes crashers, so we have to disable it.
+  // SetBaseSnapshot(settings);
 #endif
 
   auto code_cache_dir = fml::paths::JoinPaths(
