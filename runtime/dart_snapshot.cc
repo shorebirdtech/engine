@@ -61,6 +61,13 @@ static std::shared_ptr<const fml::Mapping> SearchMapping(
 #if FML_OS_IOS
   // Don't use our terrible elf hacks when loading from the IPA itself.
   if (native_library_path.back().find(".framework") == std::string::npos) {
+    // We use this terrible hack to load in the patch and then extract the
+    // symbols from it when the path is not App.framework/App but rather
+    // foo.vmcode, etc. (We could check for .vmcode instead of lack of
+    // .framework.)  We read the symbols into static variables, but then I
+    // believe we need to hold onto the ELF itself, otherwise the symbols
+    // become invalid.
+    // "leaked_elf" is meant to indicate that we're not freeing the ELF.
     static Dart_LoadedElf* leaked_elf = nullptr;
     static const uint8_t* vm_snapshot_data = nullptr;
     static const uint8_t* vm_snapshot_instrs = nullptr;
