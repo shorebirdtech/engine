@@ -43,6 +43,9 @@ extern "C" __attribute__((weak)) unsigned long getauxval(unsigned long type) {
 void SetBaseSnapshot(Settings& settings) {
   // These mappings happen to be to static data in the App.framework, so we
   // probably don't have to hold onto the DartSnapshot objects.
+  // TODO(eseidel): The VM seems to crash when the base snapshot is set,
+  // presumably because these go out of scope and the VM tries to access their
+  // memory?  Need to investigate.
   auto vm_snapshot = DartSnapshot::VMSnapshotFromSettings(settings);
   auto isolate_snapshot = DartSnapshot::IsolateSnapshotFromSettings(settings);
   assert(vm_snapshot);
@@ -63,13 +66,6 @@ void ConfigureShorebird(std::string code_cache_path,
                         const std::string& version,
                         const std::string& version_code) {
   auto shorebird_updater_dir_name = "shorebird_updater";
-
-  // We only set the base snapshot on iOS for now.
-#if FML_OS_IOS
-  // This should set the base snapshot for the Shorebird updater, but
-  // right now it causes crashers, so we have to disable it.
-  // SetBaseSnapshot(settings);
-#endif
 
   auto code_cache_dir = fml::paths::JoinPaths(
       {std::move(code_cache_path), shorebird_updater_dir_name});
@@ -129,6 +125,16 @@ void ConfigureShorebird(std::string code_cache_path,
     // change their return values if the shorebird_report_launch_failed
     // function is called.
     shorebird_report_launch_start();
+
+    // We only set the base snapshot on iOS for now.
+#if FML_OS_IOS
+    // Presumably we could always set the base snapshot, but right now the Dart
+    // will (intentionally) log if we set a base snapshot and it's not given a
+    // link table.  Once linking is more stable we can remove the log and always
+    // set the base snapshot.
+    SetBaseSnapshot(settings);
+#endif
+
   } else {
     FML_LOG(INFO) << "Shorebird updater: no active patch.";
   }

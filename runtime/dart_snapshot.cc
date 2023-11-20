@@ -61,6 +61,13 @@ static std::shared_ptr<const fml::Mapping> SearchMapping(
 #if FML_OS_IOS
   // Don't use our terrible elf hacks when loading from the IPA itself.
   if (native_library_path.back().find(".framework") == std::string::npos) {
+    // We use this terrible hack to load in the patch and then extract the
+    // symbols from it when the path is not App.framework/App but rather
+    // foo.vmcode, etc. (We could check for .vmcode instead of lack of
+    // .framework.)  We read the symbols into static variables, but then I
+    // believe we need to hold onto the ELF itself, otherwise the symbols
+    // become invalid.
+    // "leaked_elf" is meant to indicate that we're not freeing the ELF.
     static Dart_LoadedElf* leaked_elf = nullptr;
     static const uint8_t* vm_snapshot_data = nullptr;
     static const uint8_t* vm_snapshot_instrs = nullptr;
@@ -68,10 +75,17 @@ static std::shared_ptr<const fml::Mapping> SearchMapping(
     static const uint8_t* vm_isolate_instrs = nullptr;
     if (leaked_elf == nullptr) {
       const char* error = nullptr;
-      leaked_elf = Dart_LoadELF(native_library_path.back().c_str(), 0, &error,
-                                &vm_snapshot_data, &vm_snapshot_instrs,
-                                &vm_isolate_data, &vm_isolate_instrs,
-                                /* load as read-only, not rx */ true);
+      // vmcode files are elf files prefixed with a shorebird linker header.
+      auto elf_mapping =
+          GetFileMapping(native_library_path.back(), false /* executable */);
+      int elf_file_offset = Shorebird_ReadLinkHeader(elf_mapping->GetMapping(),
+                                                     elf_mapping->GetSize());
+
+      leaked_elf =
+          Dart_LoadELF(native_library_path.back().c_str(), elf_file_offset,
+                       &error, &vm_snapshot_data, &vm_snapshot_instrs,
+                       &vm_isolate_data, &vm_isolate_instrs,
+                       /* load as read-only, not rx */ true);
       if (leaked_elf != nullptr) {
         FML_LOG(INFO) << "Loaded ELF";
       } else {
