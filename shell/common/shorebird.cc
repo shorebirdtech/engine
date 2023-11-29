@@ -40,15 +40,16 @@ extern "C" __attribute__((weak)) unsigned long getauxval(unsigned long type) {
 }
 #endif
 
+// TODO(eseidel): I believe we need to leak these or we'll sometimes crash
+// when using the base snapshot in mixed mode.  This likely will not play
+// nicely with multi-engine support and will need to be refactored.
 static fml::RefPtr<const DartSnapshot> vm_snapshot;
 static fml::RefPtr<const DartSnapshot> isolate_snapshot;
 
 void SetBaseSnapshot(Settings& settings) {
-  // These mappings happen to be to static data in the App.framework, so we
-  // probably don't have to hold onto the DartSnapshot objects.
-  // TODO(eseidel): The VM seems to crash when the base snapshot is set,
-  // presumably because these go out of scope and the VM tries to access their
-  // memory?  Need to investigate.
+  // These mappings happen to be to static data in the App.framework, but
+  // we still need to seem to hold onto the DartSnapshot objects to keep
+  // the mappings alive.
   vm_snapshot = DartSnapshot::VMSnapshotFromSettings(settings);
   isolate_snapshot = DartSnapshot::IsolateSnapshotFromSettings(settings);
   assert(vm_snapshot);
