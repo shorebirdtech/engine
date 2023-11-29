@@ -134,7 +134,8 @@ void ConfigureShorebird(std::string code_cache_path,
     // On iOS we add the patch to the front of the list instead of clearing
     // the list, to allow dart_shapshot.cc to still find the base snapshot
     // for the vm isolate.
-    settings.application_library_path.insert(settings.application_library_path.begin(), active_path);
+    settings.application_library_path.insert(
+        settings.application_library_path.begin(), active_path);
 #else
     settings.application_library_path.clear();
     settings.application_library_path.emplace_back(active_path);

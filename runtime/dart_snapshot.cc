@@ -78,20 +78,19 @@ static std::shared_ptr<const fml::Mapping> SearchMapping(
     if (leaked_elf == nullptr) {
       const char* error = nullptr;
       // vmcode files are elf files prefixed with a shorebird linker header.
-      auto elf_mapping =
-          GetFileMapping(patch_path, false /* executable */);
+      auto elf_mapping = GetFileMapping(patch_path, false /* executable */);
       int elf_file_offset = Shorebird_ReadLinkHeader(elf_mapping->GetMapping(),
                                                      elf_mapping->GetSize());
 
-      leaked_elf =
-          Dart_LoadELF(patch_path.c_str(), elf_file_offset,
-                       &error, &ignored_vm_data, &ignored_vm_instrs,
-                       &isolate_data, &isolate_instrs,
-                       /* load as read-only, not rx */ false);
+      leaked_elf = Dart_LoadELF(patch_path.c_str(), elf_file_offset, &error,
+                                &ignored_vm_data, &ignored_vm_instrs,
+                                &isolate_data, &isolate_instrs,
+                                /* load as read-only, not rx */ false);
       if (leaked_elf != nullptr) {
         FML_LOG(INFO) << "Loaded ELF";
       } else {
-        FML_LOG(FATAL) << "Failed to load ELF at " << patch_path << " error: " << error;
+        FML_LOG(FATAL) << "Failed to load ELF at " << patch_path
+                       << " error: " << error;
         abort();
       }
     }
