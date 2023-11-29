@@ -40,14 +40,17 @@ extern "C" __attribute__((weak)) unsigned long getauxval(unsigned long type) {
 }
 #endif
 
+static fml::RefPtr<const DartSnapshot> vm_snapshot;
+static fml::RefPtr<const DartSnapshot> isolate_snapshot;
+
 void SetBaseSnapshot(Settings& settings) {
   // These mappings happen to be to static data in the App.framework, so we
   // probably don't have to hold onto the DartSnapshot objects.
   // TODO(eseidel): The VM seems to crash when the base snapshot is set,
   // presumably because these go out of scope and the VM tries to access their
   // memory?  Need to investigate.
-  auto vm_snapshot = DartSnapshot::VMSnapshotFromSettings(settings);
-  auto isolate_snapshot = DartSnapshot::IsolateSnapshotFromSettings(settings);
+  vm_snapshot = DartSnapshot::VMSnapshotFromSettings(settings);
+  isolate_snapshot = DartSnapshot::IsolateSnapshotFromSettings(settings);
   assert(vm_snapshot);
   // If you are crashing here, you probably are running Shorebird in a Debug
   // config, where the AOT snapshot won't be linked into the process, and thus
@@ -119,21 +122,28 @@ void ConfigureShorebird(std::string code_cache_path,
                     << c_patch_number;
     }
 
-    settings.application_library_path.clear();
-    settings.application_library_path.emplace_back(active_path);
-    // Once start_update_thread is called, the next_boot_patch* functions may
-    // change their return values if the shorebird_report_launch_failed
-    // function is called.
-    shorebird_report_launch_start();
-
     // We only set the base snapshot on iOS for now.
 #if FML_OS_IOS
     // Presumably we could always set the base snapshot, but right now the Dart
     // will (intentionally) log if we set a base snapshot and it's not given a
     // link table.  Once linking is more stable we can remove the log and always
     // set the base snapshot.
+    // Make sure we set the base snapshot before we switch settings to point
+    // to the patch.
     SetBaseSnapshot(settings);
+    // On iOS we add the patch to the front of the list instead of clearing
+    // the list, to allow dart_shapshot.cc to still find the base snapshot
+    // for the vm isolate.
+    settings.application_library_path.insert(settings.application_library_path.begin(), active_path);
+#else
+    settings.application_library_path.clear();
+    settings.application_library_path.emplace_back(active_path);
 #endif
+
+    // Once start_update_thread is called, the next_boot_patch* functions may
+    // change their return values if the shorebird_report_launch_failed
+    // function is called.
+    shorebird_report_launch_start();
 
   } else {
     FML_LOG(INFO) << "Shorebird updater: no active patch.";
