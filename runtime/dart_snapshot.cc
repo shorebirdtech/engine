@@ -57,60 +57,57 @@ static std::shared_ptr<const fml::Mapping> SearchMapping(
     const std::vector<std::string>& native_library_path,
     const char* native_library_symbol_name,
     bool is_executable) {
-  // Quick hack to make this only included in device builds.
 #if FML_OS_IOS
-  // Don't use our terrible elf hacks when loading from the IPA itself.
-  if (native_library_path.back().find(".framework") == std::string::npos) {
+  // Detect when we're trying to load a Shorebird patch.
+  auto patch_path = native_library_path.front();
+  if (patch_path.find(".vmcode") != std::string::npos) {
     // We use this terrible hack to load in the patch and then extract the
     // symbols from it when the path is not App.framework/App but rather
-    // foo.vmcode, etc. (We could check for .vmcode instead of lack of
-    // .framework.)  We read the symbols into static variables, but then I
+    // foo.vmcode, etc. We read the symbols into static variables, but then I
     // believe we need to hold onto the ELF itself, otherwise the symbols
     // become invalid.
     // "leaked_elf" is meant to indicate that we're not freeing the ELF.
     static Dart_LoadedElf* leaked_elf = nullptr;
-    static const uint8_t* vm_snapshot_data = nullptr;
-    static const uint8_t* vm_snapshot_instrs = nullptr;
-    static const uint8_t* vm_isolate_data = nullptr;
-    static const uint8_t* vm_isolate_instrs = nullptr;
+    // The VM Snapshot is identical for all binaries produced by a given version
+    // of Dart.  Our linker checks this and will fail to link if ever the VM
+    // snapshot changes.
+    const uint8_t* ignored_vm_data = nullptr;
+    const uint8_t* ignored_vm_instrs = nullptr;
+    static const uint8_t* isolate_data = nullptr;
+    static const uint8_t* isolate_instrs = nullptr;
     if (leaked_elf == nullptr) {
       const char* error = nullptr;
       // vmcode files are elf files prefixed with a shorebird linker header.
-      auto elf_mapping =
-          GetFileMapping(native_library_path.back(), false /* executable */);
+      auto elf_mapping = GetFileMapping(patch_path, false /* executable */);
       int elf_file_offset = Shorebird_ReadLinkHeader(elf_mapping->GetMapping(),
                                                      elf_mapping->GetSize());
 
-      leaked_elf =
-          Dart_LoadELF(native_library_path.back().c_str(), elf_file_offset,
-                       &error, &vm_snapshot_data, &vm_snapshot_instrs,
-                       &vm_isolate_data, &vm_isolate_instrs,
-                       /* load as read-only, not rx */ false);
+      leaked_elf = Dart_LoadELF(patch_path.c_str(), elf_file_offset, &error,
+                                &ignored_vm_data, &ignored_vm_instrs,
+                                &isolate_data, &isolate_instrs,
+                                /* load as read-only, not rx */ false);
       if (leaked_elf != nullptr) {
         FML_LOG(INFO) << "Loaded ELF";
       } else {
-        FML_LOG(FATAL) << "Failed to load ELF" << error;
+        FML_LOG(FATAL) << "Failed to load ELF at " << patch_path
+                       << " error: " << error;
         abort();
       }
     }
 
     FML_LOG(INFO) << "Loading symbol from ELF " << native_library_symbol_name;
 
-    if (native_library_symbol_name == DartSnapshot::kVMDataSymbol) {
-      return std::make_unique<const fml::NonOwnedMapping>(vm_snapshot_data, 0,
-                                                          nullptr, true);
-    } else if (native_library_symbol_name ==
-               DartSnapshot::kVMInstructionsSymbol) {
-      return std::make_unique<const fml::NonOwnedMapping>(vm_snapshot_instrs, 0,
-                                                          nullptr, true);
-    } else if (native_library_symbol_name == DartSnapshot::kIsolateDataSymbol) {
-      return std::make_unique<const fml::NonOwnedMapping>(vm_isolate_data, 0,
+    if (native_library_symbol_name == DartSnapshot::kIsolateDataSymbol) {
+      return std::make_unique<const fml::NonOwnedMapping>(isolate_data, 0,
                                                           nullptr, true);
     } else if (native_library_symbol_name ==
                DartSnapshot::kIsolateInstructionsSymbol) {
-      return std::make_unique<const fml::NonOwnedMapping>(vm_isolate_instrs, 0,
+      return std::make_unique<const fml::NonOwnedMapping>(isolate_instrs, 0,
                                                           nullptr, true);
     }
+    // Fall through to normal lookups for VM data and instructions.
+    // This fallthrough depends on the fact that NativeLibrary below can't
+    // read the ELF out of our .vmcode files.
   }
 #endif
 
