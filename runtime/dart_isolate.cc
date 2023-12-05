@@ -345,6 +345,7 @@ bool DartIsolate::Initialize(Dart_Isolate dart_isolate) {
   }
 
   phase_ = Phase::Initialized;
+  FML_LOG(ERROR) << "DartIsolate::Initialize succeeded";
   return true;
 }
 
@@ -504,6 +505,8 @@ bool DartIsolate::PrepareForRunningFromPrecompiledCode() {
     isolate_create_callback();
   }
 
+  FML_LOG(ERROR) << "DartIsolate::LoadLibraries succeeded";
+  FML_LOG(ERROR) << "Phase is now ready";
   phase_ = Phase::Ready;
   return true;
 }
@@ -677,12 +680,15 @@ bool DartIsolate::MarkIsolateRunnable() {
     return false;
   }
 
+  FML_LOG(ERROR) << "Invoking main entrypoint";
   if (tonic::CheckAndHandleError(tonic::DartInvokeField(
           Dart_LookupLibrary(tonic::ToDart("dart:ui")), "_runMain",
           {start_main_isolate_function, user_entrypoint_function, args}))) {
     FML_LOG(ERROR) << "Could not invoke the main entrypoint.";
     return false;
   }
+
+  FML_LOG(ERROR) << "InvokeMainEntrypoint succeeded";
 
   return true;
 }
@@ -721,6 +727,7 @@ bool DartIsolate::RunFromLibrary(std::optional<std::string> library_name,
     return false;
   }
 
+  FML_LOG(ERROR) << "Finished invoking main entrypoint, phase is now running";
   phase_ = Phase::Running;
 
   return true;

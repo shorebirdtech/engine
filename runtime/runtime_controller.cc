@@ -16,6 +16,7 @@
 #include "flutter/runtime/dart_isolate_group_data.h"
 #include "flutter/runtime/isolate_configuration.h"
 #include "flutter/runtime/runtime_delegate.h"
+#include "fml/logging.h"
 #include "third_party/tonic/dart_message_handler.h"
 
 namespace flutter {
@@ -415,6 +416,7 @@ bool RuntimeController::LaunchRootIsolate(
     return false;
   }
 
+  FML_LOG(ERROR) << "Calling CreateRunningRootIsolate";
   auto strong_root_isolate =
       DartIsolate::CreateRunningRootIsolate(
           settings,                                       //
@@ -435,6 +437,8 @@ bool RuntimeController::LaunchRootIsolate(
   if (!strong_root_isolate) {
     FML_LOG(ERROR) << "Could not create root isolate.";
     return false;
+  } else {
+    FML_LOG(ERROR) << "root isolate created";
   }
 
   // Enable platform channels for background isolates.

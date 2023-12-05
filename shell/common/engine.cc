@@ -241,7 +241,10 @@ Engine::RunStatus Engine::Run(RunConfiguration configuration) {
           configuration.GetEntrypointArgs(),         //
           configuration.TakeIsolateConfiguration())  //
   ) {
+    FML_LOG(ERROR) << "LaunchRootIsolate failed";
     return RunStatus::Failure;
+  } else {
+    FML_LOG(ERROR) << "LaunchRootIsolate succeeded";
   }
 
   auto service_id = runtime_controller_->GetRootIsolateServiceID();

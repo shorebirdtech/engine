@@ -82,7 +82,8 @@ void _updateWindowMetrics(
 typedef _LocaleClosure = String Function();
 
 @pragma('vm:entry-point')
-_LocaleClosure? _getLocaleClosure() => PlatformDispatcher.instance._localeClosure;
+_LocaleClosure? _getLocaleClosure() =>
+    PlatformDispatcher.instance._localeClosure;
 
 @pragma('vm:entry-point')
 void _updateLocales(List<String> locales) {
@@ -142,17 +143,19 @@ void _drawFrame() {
 
 @pragma('vm:entry-point')
 bool _onError(Object error, StackTrace? stackTrace) {
-  return PlatformDispatcher.instance._dispatchError(error, stackTrace ?? StackTrace.empty);
+  return PlatformDispatcher.instance
+      ._dispatchError(error, stackTrace ?? StackTrace.empty);
 }
 
 // ignore: always_declare_return_types, prefer_generic_function_type_aliases
 typedef _ListStringArgFunction(List<String> args);
 
 @pragma('vm:entry-point')
-void _runMain(Function startMainIsolateFunction,
-              Function userMainFunction,
-              List<String> args) {
-  startMainIsolateFunction(() { // ignore: avoid_dynamic_calls
+void _runMain(Function startMainIsolateFunction, Function userMainFunction,
+    List<String> args) {
+  print('starting main isolate function');
+  startMainIsolateFunction(() {
+    // ignore: avoid_dynamic_calls
     if (userMainFunction is _ListStringArgFunction) {
       userMainFunction(args);
     } else {
@@ -194,7 +197,8 @@ void _invoke1<A>(void Function(A a)? callback, Zone zone, A arg) {
 /// The 2 in the name refers to the number of arguments expected by
 /// the callback (and thus passed to this function, in addition to the
 /// callback itself and the zone in which the callback is executed).
-void _invoke2<A1, A2>(void Function(A1 a1, A2 a2)? callback, Zone zone, A1 arg1, A2 arg2) {
+void _invoke2<A1, A2>(
+    void Function(A1 a1, A2 a2)? callback, Zone zone, A1 arg1, A2 arg2) {
   if (callback == null) {
     return;
   }
@@ -212,7 +216,8 @@ void _invoke2<A1, A2>(void Function(A1 a1, A2 a2)? callback, Zone zone, A1 arg1,
 /// The 3 in the name refers to the number of arguments expected by
 /// the callback (and thus passed to this function, in addition to the
 /// callback itself and the zone in which the callback is executed).
-void _invoke3<A1, A2, A3>(void Function(A1 a1, A2 a2, A3 a3)? callback, Zone zone, A1 arg1, A2 arg2, A3 arg3) {
+void _invoke3<A1, A2, A3>(void Function(A1 a1, A2 a2, A3 a3)? callback,
+    Zone zone, A1 arg1, A2 arg2, A3 arg3) {
   if (callback == null) {
     return;
   }
@@ -243,26 +248,27 @@ bool _isLoopback(String host) {
 /// Zone override with 'flutter.io.allow_http' takes first priority.
 /// If zone override is not provided, engine setting is checked.
 @pragma('vm:entry-point')
-void Function(Uri) _getHttpConnectionHookClosure(bool mayInsecurelyConnectToAllDomains) {
+void Function(Uri) _getHttpConnectionHookClosure(
+    bool mayInsecurelyConnectToAllDomains) {
   return (Uri uri) {
-      final Object? zoneOverride = Zone.current[#flutter.io.allow_http];
-      if (zoneOverride == true) {
-        return;
-      }
-      if (zoneOverride == false && uri.isScheme('http')) {
-        // Going to _isLoopback check before throwing
-      } else if (mayInsecurelyConnectToAllDomains || uri.isScheme('https')) {
-        // In absence of zone override, if engine setting allows the connection
-        // or if connection is to `https`, allow the connection.
-        return;
-      }
-      // Loopback connections are always allowed
-      // Check at last resort to avoid debug annoyance of try/on ArgumentError
-      if (_isLoopback(uri.host)) {
-        return;
-      }
-      throw UnsupportedError(
+    final Object? zoneOverride = Zone.current[#flutter.io.allow_http];
+    if (zoneOverride == true) {
+      return;
+    }
+    if (zoneOverride == false && uri.isScheme('http')) {
+      // Going to _isLoopback check before throwing
+    } else if (mayInsecurelyConnectToAllDomains || uri.isScheme('https')) {
+      // In absence of zone override, if engine setting allows the connection
+      // or if connection is to `https`, allow the connection.
+      return;
+    }
+    // Loopback connections are always allowed
+    // Check at last resort to avoid debug annoyance of try/on ArgumentError
+    if (_isLoopback(uri.host)) {
+      return;
+    }
+    throw UnsupportedError(
         'Non-https connection "$uri" is not supported by the platform. '
         'Refer to https://flutter.dev/docs/release/breaking-changes/network-policy-ios-android.');
-    };
+  };
 }
