@@ -57,10 +57,12 @@ static std::shared_ptr<const fml::Mapping> SearchMapping(
     const std::vector<std::string>& native_library_path,
     const char* native_library_symbol_name,
     bool is_executable) {
+  bool is_patch = false;
 #if FML_OS_IOS
   // Detect when we're trying to load a Shorebird patch.
   auto patch_path = native_library_path.front();
-  if (patch_path.find(".vmcode") != std::string::npos) {
+  is_patch = patch_path.find(".vmcode") != std::string::npos;
+  if (is_patch) {
     // We use this terrible hack to load in the patch and then extract the
     // symbols from it when the path is not App.framework/App but rather
     // foo.vmcode, etc. We read the symbols into static variables, but then I
@@ -108,36 +110,41 @@ static std::shared_ptr<const fml::Mapping> SearchMapping(
     // Fall through to normal lookups for VM data and instructions.
     // This fallthrough depends on the fact that NativeLibrary below can't
     // read the ELF out of our .vmcode files.
-  }
+  } else {
+    // Only try to open the file if we're not loading a patch.
 #endif
 
-  // Ask the embedder. There is no fallback as we expect the embedders (via
-  // their embedding APIs) to just specify the mappings directly.
-  if (embedder_mapping_callback) {
-    // Note that mapping will be nullptr if the mapping callback returns an
-    // invalid mapping. If all the other methods for resolving the data also
-    // fail, the engine will stop with accompanying error logs.
-    if (auto mapping = embedder_mapping_callback()) {
-      return mapping;
+    // Ask the embedder. There is no fallback as we expect the embedders (via
+    // their embedding APIs) to just specify the mappings directly.
+    if (embedder_mapping_callback) {
+      // Note that mapping will be nullptr if the mapping callback returns an
+      // invalid mapping. If all the other methods for resolving the data also
+      // fail, the engine will stop with accompanying error logs.
+      if (auto mapping = embedder_mapping_callback()) {
+        return mapping;
+      }
     }
-  }
 
-  // Attempt to open file at path specified.
-  if (!file_path.empty()) {
-    if (auto file_mapping = GetFileMapping(file_path, is_executable)) {
-      return file_mapping;
+    // Attempt to open file at path specified.
+    if (!file_path.empty()) {
+      if (auto file_mapping = GetFileMapping(file_path, is_executable)) {
+        return file_mapping;
+      }
     }
-  }
 
-  // Look in application specified native library if specified.
-  for (const std::string& path : native_library_path) {
-    auto native_library = fml::NativeLibrary::Create(path.c_str());
-    auto symbol_mapping = std::make_unique<const fml::SymbolMapping>(
-        native_library, native_library_symbol_name);
-    if (symbol_mapping->GetMapping() != nullptr) {
-      return symbol_mapping;
+    // Look in application specified native library if specified.
+    for (const std::string& path : native_library_path) {
+      auto native_library = fml::NativeLibrary::Create(path.c_str());
+      auto symbol_mapping = std::make_unique<const fml::SymbolMapping>(
+          native_library, native_library_symbol_name);
+      if (symbol_mapping->GetMapping() != nullptr) {
+        return symbol_mapping;
+      }
     }
-  }
+
+#if FML_OS_IOS
+  }  // !is_patch
+#endif
 
   // Look inside the currently loaded process.
   {
