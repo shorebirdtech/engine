@@ -57,11 +57,10 @@ static std::shared_ptr<const fml::Mapping> SearchMapping(
     const std::vector<std::string>& native_library_path,
     const char* native_library_symbol_name,
     bool is_executable) {
-  bool is_patch = false;
 #if FML_OS_IOS
   // Detect when we're trying to load a Shorebird patch.
   auto patch_path = native_library_path.front();
-  is_patch = patch_path.find(".vmcode") != std::string::npos;
+  bool is_patch = patch_path.find(".vmcode") != std::string::npos;
   if (is_patch) {
     // We use this terrible hack to load in the patch and then extract the
     // symbols from it when the path is not App.framework/App but rather
