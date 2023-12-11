@@ -427,9 +427,7 @@ Shell::Shell(DartVMRef vm,
       volatile_path_tracker_(std::move(volatile_path_tracker)),
       weak_factory_gpu_(nullptr),
       weak_factory_(this) {
-// FIXME: This is probably the wrong place to hook into.  Currently we only
-// link the shorebird updater on Android, so if we don't guard this other
-// non-android targets (e.g. flutter_tester) will fail to link.
+// FIXME: This is probably the wrong place to hook into.
 #if FML_OS_ANDROID || FML_OS_IOS
   if (!vm) {
     shorebird_report_launch_failure();
