@@ -245,7 +245,7 @@ std::shared_ptr<RenderPass> CommandBufferMTL::OnCreateRenderPass(
   return pass;
 }
 
-std::shared_ptr<BlitPass> CommandBufferMTL::OnCreateBlitPass() const {
+std::shared_ptr<BlitPass> CommandBufferMTL::OnCreateBlitPass() {
   if (!buffer_) {
     return nullptr;
   }
@@ -258,7 +258,7 @@ std::shared_ptr<BlitPass> CommandBufferMTL::OnCreateBlitPass() const {
   return pass;
 }
 
-std::shared_ptr<ComputePass> CommandBufferMTL::OnCreateComputePass() const {
+std::shared_ptr<ComputePass> CommandBufferMTL::OnCreateComputePass() {
   if (!buffer_) {
     return nullptr;
   }

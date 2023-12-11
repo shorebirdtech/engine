@@ -12,24 +12,26 @@
 #include "flutter/fml/unique_fd.h"
 #include "impeller/base/backend_cast.h"
 #include "impeller/core/formats.h"
+#include "impeller/renderer/backend/vulkan/command_pool_vk.h"
 #include "impeller/renderer/backend/vulkan/device_holder.h"
 #include "impeller/renderer/backend/vulkan/pipeline_library_vk.h"
 #include "impeller/renderer/backend/vulkan/queue_vk.h"
 #include "impeller/renderer/backend/vulkan/sampler_library_vk.h"
 #include "impeller/renderer/backend/vulkan/shader_library_vk.h"
-#include "impeller/renderer/backend/vulkan/swapchain_vk.h"
-#include "impeller/renderer/backend/vulkan/vk.h"
 #include "impeller/renderer/capabilities.h"
 #include "impeller/renderer/context.h"
-#include "impeller/renderer/surface.h"
 
 namespace impeller {
 
 bool HasValidationLayers();
 
+class CommandEncoderFactoryVK;
 class CommandEncoderVK;
+class CommandPoolRecyclerVK;
 class DebugReportVK;
 class FenceWaiterVK;
+class ResourceManagerVK;
+class SurfaceContextVK;
 
 class ContextVK final : public Context,
                         public BackendCast<ContextVK, Context>,
@@ -52,6 +54,9 @@ class ContextVK final : public Context,
 
   // |Context|
   ~ContextVK() override;
+
+  // |Context|
+  BackendType GetBackendType() const override;
 
   // |Context|
   std::string DescribeGpuModel() const override;
@@ -79,6 +84,11 @@ class ContextVK final : public Context,
 
   // |Context|
   void Shutdown() override;
+
+  // |Context|
+  void SetSyncPresentation(bool value) override { sync_presentation_ = value; }
+
+  bool GetSyncPresentation() const { return sync_presentation_; }
 
   void SetOffscreenFormat(PixelFormat pixel_format);
 
@@ -122,19 +132,17 @@ class ContextVK final : public Context,
   const std::shared_ptr<fml::ConcurrentTaskRunner>
   GetConcurrentWorkerTaskRunner() const;
 
-  [[nodiscard]] bool SetWindowSurface(vk::UniqueSurfaceKHR surface);
-
-  std::unique_ptr<Surface> AcquireNextSurface();
-
-#ifdef FML_OS_ANDROID
-  vk::UniqueSurfaceKHR CreateAndroidSurface(ANativeWindow* window) const;
-#endif  // FML_OS_ANDROID
+  std::shared_ptr<SurfaceContextVK> CreateSurfaceContext();
 
   const std::shared_ptr<QueueVK>& GetGraphicsQueue() const;
 
   vk::PhysicalDevice GetPhysicalDevice() const;
 
   std::shared_ptr<FenceWaiterVK> GetFenceWaiter() const;
+
+  std::shared_ptr<ResourceManagerVK> GetResourceManager() const;
+
+  std::shared_ptr<CommandPoolRecyclerVK> GetCommandPoolRecycler() const;
 
  private:
   struct DeviceHolderImpl : public DeviceHolder {
@@ -157,11 +165,13 @@ class ContextVK final : public Context,
   std::shared_ptr<SamplerLibraryVK> sampler_library_;
   std::shared_ptr<PipelineLibraryVK> pipeline_library_;
   QueuesVK queues_;
-  std::shared_ptr<SwapchainVK> swapchain_;
   std::shared_ptr<const Capabilities> device_capabilities_;
   std::shared_ptr<FenceWaiterVK> fence_waiter_;
+  std::shared_ptr<ResourceManagerVK> resource_manager_;
+  std::shared_ptr<CommandPoolRecyclerVK> command_pool_recycler_;
   std::string device_name_;
   std::shared_ptr<fml::ConcurrentMessageLoop> raster_message_loop_;
+  bool sync_presentation_ = false;
   const uint64_t hash_;
 
   bool is_valid_ = false;
@@ -170,7 +180,8 @@ class ContextVK final : public Context,
 
   void Setup(Settings settings);
 
-  std::unique_ptr<CommandEncoderVK> CreateGraphicsCommandEncoder() const;
+  std::unique_ptr<CommandEncoderFactoryVK> CreateGraphicsCommandEncoderFactory()
+      const;
 
   FML_DISALLOW_COPY_AND_ASSIGN(ContextVK);
 };

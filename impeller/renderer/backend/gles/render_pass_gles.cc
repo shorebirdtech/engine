@@ -4,10 +4,7 @@
 
 #include "impeller/renderer/backend/gles/render_pass_gles.h"
 
-#include <algorithm>
-
 #include "flutter/fml/trace_event.h"
-#include "impeller/base/config.h"
 #include "impeller/base/validation.h"
 #include "impeller/renderer/backend/gles/device_buffer_gles.h"
 #include "impeller/renderer/backend/gles/formats_gles.h"
@@ -100,14 +97,16 @@ void ConfigureStencil(const ProcTableGLES& gl,
   gl.Enable(GL_STENCIL_TEST);
   const auto& front = pipeline.GetFrontStencilAttachmentDescriptor();
   const auto& back = pipeline.GetBackStencilAttachmentDescriptor();
-  if (front.has_value() && front == back) {
+
+  if (front.has_value() && back.has_value() && front == back) {
     ConfigureStencil(GL_FRONT_AND_BACK, gl, *front, stencil_reference);
-  } else if (front.has_value()) {
+    return;
+  }
+  if (front.has_value()) {
     ConfigureStencil(GL_FRONT, gl, *front, stencil_reference);
-  } else if (back.has_value()) {
+  }
+  if (back.has_value()) {
     ConfigureStencil(GL_BACK, gl, *back, stencil_reference);
-  } else {
-    FML_UNREACHABLE();
   }
 }
 
@@ -242,6 +241,7 @@ struct RenderPassData {
       return false;
     }
 
+#ifdef IMPELLER_DEBUG
     fml::ScopedCleanupClosure pop_cmd_debug_marker(
         [&gl]() { gl.PopDebugGroup(); });
     if (!command.label.empty()) {
@@ -249,6 +249,7 @@ struct RenderPassData {
     } else {
       pop_cmd_debug_marker.Release();
     }
+#endif  // IMPELLER_DEBUG
 
     const auto& pipeline = PipelineGLES::Cast(*command.pipeline);
 
@@ -452,6 +453,7 @@ struct RenderPassData {
 
   if (gl.DiscardFramebufferEXT.IsAvailable()) {
     std::vector<GLenum> attachments;
+
     if (pass_data.discard_color_attachment) {
       attachments.push_back(is_default_fbo ? GL_COLOR_EXT
                                            : GL_COLOR_ATTACHMENT0);
@@ -460,7 +462,15 @@ struct RenderPassData {
       attachments.push_back(is_default_fbo ? GL_DEPTH_EXT
                                            : GL_DEPTH_ATTACHMENT);
     }
+
+// TODO(jonahwilliams): discarding the stencil on the default fbo when running
+// on Windows causes Angle to discard the entire render target. Until we know
+// the reason, default to storing.
+#ifdef FML_OS_WIN
+    if (pass_data.discard_stencil_attachment && !is_default_fbo) {
+#else
     if (pass_data.discard_stencil_attachment) {
+#endif
       attachments.push_back(is_default_fbo ? GL_STENCIL_EXT
                                            : GL_STENCIL_ATTACHMENT);
     }

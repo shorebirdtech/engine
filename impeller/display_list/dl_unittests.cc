@@ -31,7 +31,6 @@
 #include "third_party/imgui/imgui.h"
 #include "third_party/skia/include/core/SkBlurTypes.h"
 #include "third_party/skia/include/core/SkClipOp.h"
-#include "third_party/skia/include/core/SkColor.h"
 #include "third_party/skia/include/core/SkPathBuilder.h"
 #include "third_party/skia/include/core/SkRRect.h"
 
@@ -122,7 +121,7 @@ TEST_P(DisplayListTest, CanDrawCapsAndJoins) {
 
   paint.setDrawStyle(flutter::DlDrawStyle::kStroke);
   paint.setStrokeWidth(30);
-  paint.setColor(SK_ColorRED);
+  paint.setColor(flutter::DlColor::kRed());
 
   auto path =
       SkPathBuilder{}.moveTo(-50, 0).lineTo(0, -50).lineTo(50, 0).snapshot();
@@ -210,10 +209,10 @@ TEST_P(DisplayListTest, CanDrawArc) {
     paint.setStrokeJoin(flutter::DlStrokeJoin::kMiter);
     paint.setStrokeMiter(10);
     auto rect = SkRect::MakeLTRB(p1.x, p1.y, p2.x, p2.y);
-    paint.setColor(SK_ColorGREEN);
+    paint.setColor(flutter::DlColor::kGreen());
     paint.setStrokeWidth(2);
     builder.DrawRect(rect, paint);
-    paint.setColor(SK_ColorRED);
+    paint.setColor(flutter::DlColor::kRed());
     paint.setStrokeWidth(stroke_width);
     builder.DrawArc(rect, start_angle, sweep_angle, use_center, paint);
 
@@ -227,7 +226,7 @@ TEST_P(DisplayListTest, StrokedPathsDrawCorrectly) {
     flutter::DisplayListBuilder builder;
     flutter::DlPaint paint;
 
-    paint.setColor(SK_ColorRED);
+    paint.setColor(flutter::DlColor::kRed());
     paint.setDrawStyle(flutter::DlDrawStyle::kStroke);
 
     static float stroke_width = 10.0f;
@@ -399,7 +398,7 @@ TEST_P(DisplayListTest, CanDrawWithOddPathWinding) {
   flutter::DisplayListBuilder builder;
   flutter::DlPaint paint;
 
-  paint.setColor(SK_ColorRED);
+  paint.setColor(flutter::DlColor::kRed());
   paint.setDrawStyle(flutter::DlDrawStyle::kFill);
 
   builder.Translate(300, 300);
@@ -407,6 +406,33 @@ TEST_P(DisplayListTest, CanDrawWithOddPathWinding) {
   path.setFillType(SkPathFillType::kEvenOdd);
   path.addCircle(0, 0, 100);
   path.addCircle(0, 0, 50);
+  builder.DrawPath(path, paint);
+
+  ASSERT_TRUE(OpenPlaygroundHere(builder.Build()));
+}
+
+// Regression test for https://github.com/flutter/flutter/issues/134816.
+//
+// It should be possible to draw 3 lines, and not have an implicit close path.
+TEST_P(DisplayListTest, CanDrawAnOpenPath) {
+  flutter::DisplayListBuilder builder;
+  flutter::DlPaint paint;
+
+  paint.setColor(flutter::DlColor::kRed());
+  paint.setDrawStyle(flutter::DlDrawStyle::kStroke);
+  paint.setStrokeWidth(10);
+
+  builder.Translate(300, 300);
+
+  // Move to (50, 50) and draw lines from:
+  // 1. (50, height)
+  // 2. (width, height)
+  // 3. (width, 50)
+  SkPath path;
+  path.moveTo(50, 50);
+  path.lineTo(50, 100);
+  path.lineTo(100, 100);
+  path.lineTo(100, 50);
   builder.DrawPath(path, paint);
 
   ASSERT_TRUE(OpenPlaygroundHere(builder.Build()));
@@ -428,7 +454,7 @@ TEST_P(DisplayListTest, CanDrawWithMaskBlur) {
 
   // Mask blurred filled path.
   {
-    paint.setColor(SK_ColorYELLOW);
+    paint.setColor(flutter::DlColor::kYellow());
     auto filter =
         flutter::DlBlurMaskFilter(flutter::DlBlurStyle::kOuter, 10.0f);
     paint.setMaskFilter(&filter);
@@ -444,6 +470,45 @@ TEST_P(DisplayListTest, CanDrawWithMaskBlur) {
         SkTextBlob::MakeFromString("Testing", CreateTestFont()), 220, 170,
         paint);
   }
+
+  ASSERT_TRUE(OpenPlaygroundHere(builder.Build()));
+}
+
+TEST_P(DisplayListTest, CanDrawStrokedText) {
+  flutter::DisplayListBuilder builder;
+  flutter::DlPaint paint;
+
+  paint.setDrawStyle(flutter::DlDrawStyle::kStroke);
+  paint.setColor(flutter::DlColor::kRed());
+  builder.DrawTextBlob(
+      SkTextBlob::MakeFromString("stoked about stroked text", CreateTestFont()),
+      250, 250, paint);
+
+  ASSERT_TRUE(OpenPlaygroundHere(builder.Build()));
+}
+
+// Regression test for https://github.com/flutter/flutter/issues/133157.
+TEST_P(DisplayListTest, StrokedTextNotOffsetFromNormalText) {
+  flutter::DisplayListBuilder builder;
+  flutter::DlPaint paint;
+  auto const& text_blob = SkTextBlob::MakeFromString("00000", CreateTestFont());
+
+  // https://api.flutter.dev/flutter/material/Colors/blue-constant.html.
+  auto const& mat_blue = flutter::DlColor(0xFF2196f3);
+
+  // Draw a blue filled rectangle so the text is easier to see.
+  paint.setDrawStyle(flutter::DlDrawStyle::kFill);
+  paint.setColor(mat_blue);
+  builder.DrawRect(SkRect::MakeXYWH(0, 0, 500, 500), paint);
+
+  // Draw stacked text, with stroked text on top.
+  paint.setDrawStyle(flutter::DlDrawStyle::kFill);
+  paint.setColor(flutter::DlColor::kWhite());
+  builder.DrawTextBlob(text_blob, 250, 250, paint);
+
+  paint.setDrawStyle(flutter::DlDrawStyle::kStroke);
+  paint.setColor(flutter::DlColor::kBlack());
+  builder.DrawTextBlob(text_blob, 250, 250, paint);
 
   ASSERT_TRUE(OpenPlaygroundHere(builder.Build()));
 }
@@ -468,7 +533,7 @@ TEST_P(DisplayListTest, CanDrawWithBlendColorFilter) {
 
   // Pipeline blended image.
   {
-    auto filter = flutter::DlBlendColorFilter(SK_ColorYELLOW,
+    auto filter = flutter::DlBlendColorFilter(flutter::DlColor::kYellow(),
                                               flutter::DlBlendMode::kModulate);
     paint.setColorFilter(&filter);
     builder.DrawImage(DlImageImpeller::Make(texture), SkPoint::Make(100, 100),
@@ -477,8 +542,8 @@ TEST_P(DisplayListTest, CanDrawWithBlendColorFilter) {
 
   // Advanced blended image.
   {
-    auto filter =
-        flutter::DlBlendColorFilter(SK_ColorRED, flutter::DlBlendMode::kScreen);
+    auto filter = flutter::DlBlendColorFilter(flutter::DlColor::kRed(),
+                                              flutter::DlBlendMode::kScreen);
     paint.setColorFilter(&filter);
     builder.DrawImage(DlImageImpeller::Make(texture), SkPoint::Make(250, 250),
                       flutter::DlImageSampling::kNearestNeighbor, &paint);
@@ -880,18 +945,12 @@ TEST_P(DisplayListTest,
 }
 
 TEST_P(DisplayListTest, TransparentShadowProducesCorrectColor) {
-  flutter::DisplayListBuilder builder;
-  {
-    builder.Save();
-    builder.Scale(1.618, 1.618);
-    builder.DrawShadow(SkPath{}.addRect(SkRect::MakeXYWH(0, 0, 200, 100)),
-                       SK_ColorTRANSPARENT, 15, false, 1);
-    builder.Restore();
-  }
-  auto dl = builder.Build();
-
   DlDispatcher dispatcher;
-  dispatcher.drawDisplayList(dl, 1);
+  dispatcher.save();
+  dispatcher.scale(1.618, 1.618);
+  dispatcher.drawShadow(SkPath{}.addRect(SkRect::MakeXYWH(0, 0, 200, 100)),
+                        flutter::DlColor::kTransparent(), 15, false, 1);
+  dispatcher.restore();
   auto picture = dispatcher.EndRecordingAsPicture();
 
   std::shared_ptr<SolidRRectBlurContents> rrect_blur;
@@ -1137,11 +1196,13 @@ TEST_P(DisplayListTest, CanDrawRectWithLinearToSrgbColorFilter) {
   flutter::DlPaint paint;
   paint.setColor(flutter::DlColor(0xFF2196F3).withAlpha(128));
   flutter::DisplayListBuilder builder;
-  paint.setColorFilter(flutter::DlLinearToSrgbGammaColorFilter::instance.get());
+  paint.setColorFilter(
+      flutter::DlLinearToSrgbGammaColorFilter::kInstance.get());
   builder.DrawRect(SkRect::MakeXYWH(0, 0, 200, 200), paint);
   builder.Translate(0, 200);
 
-  paint.setColorFilter(flutter::DlSrgbToLinearGammaColorFilter::instance.get());
+  paint.setColorFilter(
+      flutter::DlSrgbToLinearGammaColorFilter::kInstance.get());
   builder.DrawRect(SkRect::MakeXYWH(0, 0, 200, 200), paint);
 
   ASSERT_TRUE(OpenPlaygroundHere(builder.Build()));
@@ -1464,6 +1525,29 @@ TEST_P(DisplayListTest, DrawVerticesSolidColorTrianglesWithIndices) {
 
   paint.setColor(flutter::DlColor::kWhite());
   builder.DrawVertices(vertices, flutter::DlBlendMode::kSrcOver, paint);
+
+  ASSERT_TRUE(OpenPlaygroundHere(builder.Build()));
+}
+
+TEST_P(DisplayListTest, DrawVerticesPremultipliesColors) {
+  std::vector<SkPoint> positions = {
+      SkPoint::Make(100, 300), SkPoint::Make(200, 100), SkPoint::Make(300, 300),
+      SkPoint::Make(200, 500)};
+  auto color = flutter::DlColor::kBlue().withAlpha(0x99);
+  std::vector<uint16_t> indices = {0, 1, 2, 0, 2, 3};
+  std::vector<flutter::DlColor> colors = {color, color, color, color};
+
+  auto vertices = flutter::DlVertices::Make(
+      flutter::DlVertexMode::kTriangles, 6, positions.data(),
+      /*texture_coorindates=*/nullptr, colors.data(), 6, indices.data());
+
+  flutter::DisplayListBuilder builder;
+  flutter::DlPaint paint;
+  paint.setBlendMode(flutter::DlBlendMode::kSrcOver);
+  paint.setColor(flutter::DlColor::kRed());
+
+  builder.DrawRect(SkRect::MakeLTRB(0, 0, 400, 400), paint);
+  builder.DrawVertices(vertices, flutter::DlBlendMode::kDst, paint);
 
   ASSERT_TRUE(OpenPlaygroundHere(builder.Build()));
 }

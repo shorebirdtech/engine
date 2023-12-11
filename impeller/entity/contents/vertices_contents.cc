@@ -124,7 +124,7 @@ bool VerticesUVContents::Render(const ContentContext& renderer,
   }
 
   Command cmd;
-  cmd.label = "VerticesUV";
+  DEBUG_COMMAND_INFO(cmd, "VerticesUV");
   auto& host_buffer = pass.GetTransientsBuffer();
   auto geometry = parent_.GetGeometry();
 
@@ -144,11 +144,8 @@ bool VerticesUVContents::Render(const ContentContext& renderer,
   frame_info.mvp = geometry_result.transform;
   frame_info.texture_sampler_y_coord_scale =
       snapshot->texture->GetYCoordScale();
+  frame_info.alpha = alpha_ * snapshot->opacity;
   VS::BindFrameInfo(cmd, host_buffer.EmplaceUniform(frame_info));
-
-  FS::FragInfo frag_info;
-  frag_info.alpha = alpha_ * snapshot->opacity;
-  FS::BindFragInfo(cmd, host_buffer.EmplaceUniform(frag_info));
 
   FS::BindTextureSampler(cmd, snapshot->texture,
                          renderer.GetContext()->GetSamplerLibrary()->GetSampler(
@@ -181,7 +178,7 @@ bool VerticesColorContents::Render(const ContentContext& renderer,
   using FS = GeometryColorPipeline::FragmentShader;
 
   Command cmd;
-  cmd.label = "VerticesColors";
+  DEBUG_COMMAND_INFO(cmd, "VerticesColors");
   auto& host_buffer = pass.GetTransientsBuffer();
   auto geometry = parent_.GetGeometry();
 

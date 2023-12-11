@@ -59,7 +59,7 @@ class FlutterWindowsView : public WindowBindingHandlerDelegate,
   WindowsRenderTarget* GetRenderTarget() const;
 
   // Return the currently configured PlatformWindow.
-  PlatformWindow GetPlatformWindow() const;
+  virtual PlatformWindow GetPlatformWindow() const;
 
   // Returns the engine backing this view.
   FlutterWindowsEngine* GetEngine();
@@ -210,6 +210,9 @@ class FlutterWindowsView : public WindowBindingHandlerDelegate,
   std::weak_ptr<AccessibilityBridgeWindows> accessibility_bridge() {
     return accessibility_bridge_;
   }
+
+  // |WindowBindingHandlerDelegate|
+  void OnWindowStateEvent(HWND hwnd, WindowStateEvent event) override;
 
  protected:
   virtual void NotifyWinEventWrapper(ui::AXPlatformNodeWin* node,

@@ -7,12 +7,14 @@
 #include <memory>
 #include <optional>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 #include "flutter/testing/testing.h"
 #include "fml/logging.h"
 #include "fml/time/time_point.h"
 #include "gtest/gtest.h"
+#include "impeller/core/texture_descriptor.h"
 #include "impeller/entity/contents/atlas_contents.h"
 #include "impeller/entity/contents/clip_contents.h"
 #include "impeller/entity/contents/conical_gradient_contents.h"
@@ -42,14 +44,16 @@
 #include "impeller/geometry/geometry_asserts.h"
 #include "impeller/geometry/path_builder.h"
 #include "impeller/geometry/sigma.h"
+#include "impeller/geometry/vector.h"
 #include "impeller/playground/playground.h"
 #include "impeller/playground/widgets.h"
+#include "impeller/renderer/command.h"
 #include "impeller/renderer/render_pass.h"
 #include "impeller/renderer/vertex_buffer_builder.h"
 #include "impeller/runtime_stage/runtime_stage.h"
 #include "impeller/tessellator/tessellator.h"
 #include "impeller/typographer/backends/skia/text_frame_skia.h"
-#include "impeller/typographer/backends/skia/text_render_context_skia.h"
+#include "impeller/typographer/backends/skia/typographer_context_skia.h"
 #include "include/core/SkBlendMode.h"
 #include "third_party/imgui/imgui.h"
 #include "third_party/skia/include/core/SkTextBlob.h"
@@ -70,14 +74,10 @@ TEST_P(EntityTest, CanCreateEntity) {
 
 class TestPassDelegate final : public EntityPassDelegate {
  public:
-  explicit TestPassDelegate(std::optional<Rect> coverage, bool collapse = false)
-      : coverage_(coverage), collapse_(collapse) {}
+  explicit TestPassDelegate(bool collapse = false) : collapse_(collapse) {}
 
   // |EntityPassDelegate|
   ~TestPassDelegate() override = default;
-
-  // |EntityPassDelegate|
-  std::optional<Rect> GetCoverageRect() override { return coverage_; }
 
   // |EntityPassDelgate|
   bool CanElide() override { return false; }
@@ -94,6 +94,13 @@ class TestPassDelegate final : public EntityPassDelegate {
     return nullptr;
   }
 
+  // |EntityPassDelegate|
+  std::shared_ptr<FilterContents> WithImageFilter(
+      const FilterInput::Variant& input,
+      const Matrix& effect_transform) const override {
+    return nullptr;
+  }
+
  private:
   const std::optional<Rect> coverage_;
   const bool collapse_;
@@ -107,12 +114,12 @@ auto CreatePassWithRectPath(Rect rect,
   entity.SetContents(SolidColorContents::Make(
       PathBuilder{}.AddRect(rect).TakePath(), Color::Red()));
   subpass->AddEntity(entity);
-  subpass->SetDelegate(
-      std::make_unique<TestPassDelegate>(bounds_hint, collapse));
+  subpass->SetDelegate(std::make_unique<TestPassDelegate>(collapse));
+  subpass->SetBoundsLimit(bounds_hint);
   return subpass;
 }
 
-TEST_P(EntityTest, EntityPassCoverageRespectsDelegateBoundsHint) {
+TEST_P(EntityTest, EntityPassRespectsSubpassBoundsLimit) {
   EntityPass pass;
 
   auto subpass0 = CreatePassWithRectPath(Rect::MakeLTRB(0, 0, 100, 100),
@@ -857,7 +864,6 @@ TEST_P(EntityTest, BlendingModeOptions) {
     auto draw_rect = [&context, &pass, &world_matrix](
                          Rect rect, Color color, BlendMode blend_mode) -> bool {
       using VS = SolidFillPipeline::VertexShader;
-      using FS = SolidFillPipeline::FragmentShader;
 
       VertexBufferBuilder<VS::PerVertexData> vtx_builder;
       {
@@ -873,7 +879,7 @@ TEST_P(EntityTest, BlendingModeOptions) {
       }
 
       Command cmd;
-      cmd.label = "Blended Rectangle";
+      DEBUG_COMMAND_INFO(cmd, "Blended Rectangle");
       auto options = OptionsFromPass(pass);
       options.blend_mode = blend_mode;
       options.primitive_type = PrimitiveType::kTriangle;
@@ -884,13 +890,9 @@ TEST_P(EntityTest, BlendingModeOptions) {
       VS::FrameInfo frame_info;
       frame_info.mvp =
           Matrix::MakeOrthographic(pass.GetRenderTargetSize()) * world_matrix;
+      frame_info.color = color.Premultiply();
       VS::BindFrameInfo(cmd,
                         pass.GetTransientsBuffer().EmplaceUniform(frame_info));
-
-      FS::FragInfo frag_info;
-      frag_info.color = color.Premultiply();
-      FS::BindFragInfo(cmd,
-                       pass.GetTransientsBuffer().EmplaceUniform(frag_info));
 
       return pass.AddCommand(std::move(cmd));
     };
@@ -1199,12 +1201,11 @@ TEST_P(EntityTest, MorphologyFilter) {
     input = texture;
     input_size = input_rect.size;
 
-    auto effect_transform = Matrix::MakeScale(
-        Vector2{effect_transform_scale, effect_transform_scale});
-
     auto contents = FilterContents::MakeMorphology(
         FilterInput::Make(input), Radius{radius[0]}, Radius{radius[1]},
-        morphology_types[selected_morphology_type], effect_transform);
+        morphology_types[selected_morphology_type]);
+    contents->SetEffectTransform(Matrix::MakeScale(
+        Vector2{effect_transform_scale, effect_transform_scale}));
 
     auto ctm = Matrix::MakeScale(GetContentScale()) *
                Matrix::MakeTranslation(Vector3(offset[0], offset[1])) *
@@ -2168,23 +2169,24 @@ TEST_P(EntityTest, InheritOpacityTest) {
   auto tiled_texture = std::make_shared<TiledTextureContents>();
   tiled_texture->SetGeometry(
       Geometry::MakeRect(Rect::MakeLTRB(100, 100, 200, 200)));
-  tiled_texture->SetOpacity(0.5);
+  tiled_texture->SetOpacityFactor(0.5);
 
   ASSERT_TRUE(tiled_texture->CanInheritOpacity(entity));
 
   tiled_texture->SetInheritedOpacity(0.5);
-  ASSERT_EQ(tiled_texture->GetOpacity(), 0.25);
+  ASSERT_EQ(tiled_texture->GetOpacityFactor(), 0.25);
   tiled_texture->SetInheritedOpacity(0.5);
-  ASSERT_EQ(tiled_texture->GetOpacity(), 0.25);
+  ASSERT_EQ(tiled_texture->GetOpacityFactor(), 0.25);
 
   // Text contents can accept opacity if the text frames do not
   // overlap
   SkFont font;
   font.setSize(30);
   auto blob = SkTextBlob::MakeFromString("A", font);
-  auto frame = TextFrameFromTextBlob(blob);
-  auto lazy_glyph_atlas = std::make_shared<LazyGlyphAtlas>();
-  lazy_glyph_atlas->AddTextFrame(frame);
+  auto frame = MakeTextFrameFromTextBlobSkia(blob);
+  auto lazy_glyph_atlas =
+      std::make_shared<LazyGlyphAtlas>(TypographerContextSkia::Make());
+  lazy_glyph_atlas->AddTextFrame(*frame, 1.0f);
 
   auto text_contents = std::make_shared<TextContents>();
   text_contents->SetTextFrame(frame);
@@ -2415,6 +2417,14 @@ TEST_P(EntityTest, PointFieldGeometryDivisions) {
   ASSERT_EQ(PointFieldGeometry::ComputeCircleDivisions(20000.0, true), 140u);
 }
 
+TEST_P(EntityTest, PointFieldGeometryCoverage) {
+  std::vector<Point> points = {{10, 20}, {100, 200}};
+  auto geometry = Geometry::MakePointField(points, 5.0, false);
+  ASSERT_EQ(*geometry->GetCoverage(Matrix()), Rect::MakeLTRB(5, 15, 105, 205));
+  ASSERT_EQ(*geometry->GetCoverage(Matrix::MakeTranslation({30, 0, 0})),
+            Rect::MakeLTRB(35, 15, 135, 205));
+}
+
 TEST_P(EntityTest, ColorFilterContentsWithLargeGeometry) {
   Entity entity;
   entity.SetTransformation(Matrix::MakeScale(GetContentScale()));
@@ -2433,6 +2443,96 @@ TEST_P(EntityTest, ColorFilterContentsWithLargeGeometry) {
                                FilterInput::Make(src_contents, false)});
   entity.SetContents(std::move(contents));
   ASSERT_TRUE(OpenPlaygroundHere(entity));
+}
+
+TEST_P(EntityTest, TextContentsCeilsGlyphScaleToDecimal) {
+  ASSERT_EQ(TextFrame::RoundScaledFontSize(0.4321111f, 12), 0.43f);
+  ASSERT_EQ(TextFrame::RoundScaledFontSize(0.5321111f, 12), 0.53f);
+  ASSERT_EQ(TextFrame::RoundScaledFontSize(2.1f, 12), 2.1f);
+  ASSERT_EQ(TextFrame::RoundScaledFontSize(0.0f, 12), 0.0f);
+}
+
+class TestRenderTargetAllocator : public RenderTargetAllocator {
+ public:
+  explicit TestRenderTargetAllocator(std::shared_ptr<Allocator> allocator)
+      : RenderTargetAllocator(std::move(allocator)) {}
+
+  ~TestRenderTargetAllocator() = default;
+
+  std::shared_ptr<Texture> CreateTexture(
+      const TextureDescriptor& desc) override {
+    allocated_.push_back(desc);
+    return RenderTargetAllocator::CreateTexture(desc);
+  }
+
+  void Start() override { RenderTargetAllocator::Start(); }
+
+  void End() override { RenderTargetAllocator::End(); }
+
+  std::vector<TextureDescriptor> GetDescriptors() const { return allocated_; }
+
+ private:
+  std::vector<TextureDescriptor> allocated_;
+};
+
+TEST_P(EntityTest, AdvancedBlendCoverageHintIsNotResetByEntityPass) {
+  if (GetContext()->GetCapabilities()->SupportsFramebufferFetch()) {
+    GTEST_SKIP() << "Backends that support framebuffer fetch dont use coverage "
+                    "for advanced blends.";
+  }
+
+  auto contents = std::make_shared<SolidColorContents>();
+  contents->SetGeometry(Geometry::MakeRect({100, 100, 100, 100}));
+  contents->SetColor(Color::Red());
+
+  Entity entity;
+  entity.SetTransformation(Matrix::MakeScale(Vector3(2, 2, 1)));
+  entity.SetBlendMode(BlendMode::kColorBurn);
+  entity.SetContents(contents);
+
+  auto coverage = entity.GetCoverage();
+  EXPECT_TRUE(coverage.has_value());
+
+  auto pass = std::make_unique<EntityPass>();
+  auto test_allocator = std::make_shared<TestRenderTargetAllocator>(
+      GetContext()->GetResourceAllocator());
+  auto stencil_config = RenderTarget::AttachmentConfig{
+      .storage_mode = StorageMode::kDevicePrivate,
+      .load_action = LoadAction::kClear,
+      .store_action = StoreAction::kDontCare,
+      .clear_color = Color::BlackTransparent()};
+  auto rt = RenderTarget::CreateOffscreen(
+      *GetContext(), *test_allocator, ISize::MakeWH(1000, 1000), "Offscreen",
+      RenderTarget::kDefaultColorAttachmentConfig, stencil_config);
+  auto content_context = ContentContext(
+      GetContext(), TypographerContextSkia::Make(), test_allocator);
+  pass->AddEntity(entity);
+
+  EXPECT_TRUE(pass->Render(content_context, rt));
+
+  if (test_allocator->GetDescriptors().size() == 6u) {
+    EXPECT_EQ(test_allocator->GetDescriptors()[0].size, ISize(1000, 1000));
+    EXPECT_EQ(test_allocator->GetDescriptors()[1].size, ISize(1000, 1000));
+
+    EXPECT_EQ(test_allocator->GetDescriptors()[2].size, ISize(200, 200));
+    EXPECT_EQ(test_allocator->GetDescriptors()[3].size, ISize(200, 200));
+    EXPECT_EQ(test_allocator->GetDescriptors()[4].size, ISize(200, 200));
+    EXPECT_EQ(test_allocator->GetDescriptors()[5].size, ISize(200, 200));
+  } else if (test_allocator->GetDescriptors().size() == 9u) {
+    // Onscreen render target.
+    EXPECT_EQ(test_allocator->GetDescriptors()[0].size, ISize(1000, 1000));
+    EXPECT_EQ(test_allocator->GetDescriptors()[1].size, ISize(1000, 1000));
+    EXPECT_EQ(test_allocator->GetDescriptors()[2].size, ISize(1000, 1000));
+    EXPECT_EQ(test_allocator->GetDescriptors()[3].size, ISize(1000, 1000));
+    EXPECT_EQ(test_allocator->GetDescriptors()[4].size, ISize(1000, 1000));
+
+    EXPECT_EQ(test_allocator->GetDescriptors()[5].size, ISize(200, 200));
+    EXPECT_EQ(test_allocator->GetDescriptors()[5].size, ISize(200, 200));
+    EXPECT_EQ(test_allocator->GetDescriptors()[6].size, ISize(200, 200));
+    EXPECT_EQ(test_allocator->GetDescriptors()[7].size, ISize(200, 200));
+  } else {
+    EXPECT_TRUE(false);
+  }
 }
 
 }  // namespace testing

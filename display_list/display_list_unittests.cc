@@ -22,7 +22,9 @@
 #include "flutter/testing/testing.h"
 
 #include "third_party/skia/include/core/SkBBHFactory.h"
+#include "third_party/skia/include/core/SkColorFilter.h"
 #include "third_party/skia/include/core/SkPictureRecorder.h"
+#include "third_party/skia/include/core/SkRSXform.h"
 #include "third_party/skia/include/core/SkSurface.h"
 
 namespace flutter {
@@ -930,7 +932,8 @@ TEST_F(DisplayListTest, NestedOpCountMetricsSameAsSkPicture) {
   DlOpReceiver& receiver = ToReceiver(builder);
   for (int y = 10; y <= 60; y += 10) {
     for (int x = 10; x <= 60; x += 10) {
-      receiver.setColor(((x + y) % 20) == 10 ? SK_ColorRED : SK_ColorBLUE);
+      receiver.setColor(((x + y) % 20) == 10 ? DlColor(SK_ColorRED)
+                                             : DlColor(SK_ColorBLUE));
       receiver.drawRect(SkRect::MakeXYWH(x, y, 80, 80));
     }
   }
@@ -1064,8 +1067,10 @@ TEST_F(DisplayListTest, SingleOpsMightSupportGroupOpacityBlendMode) {
       #body, [](DlOpReceiver& receiver) { body }, expect, expect)
 
   RUN_TESTS(receiver.drawPaint(););
-  RUN_TESTS2(receiver.drawColor(SK_ColorRED, DlBlendMode::kSrcOver);, true);
-  RUN_TESTS2(receiver.drawColor(SK_ColorRED, DlBlendMode::kSrc);, false);
+  RUN_TESTS2(receiver.drawColor(DlColor(SK_ColorRED), DlBlendMode::kSrcOver);
+             , true);
+  RUN_TESTS2(receiver.drawColor(DlColor(SK_ColorRED), DlBlendMode::kSrc);
+             , false);
   RUN_TESTS(receiver.drawLine({0, 0}, {10, 10}););
   RUN_TESTS(receiver.drawRect({0, 0, 10, 10}););
   RUN_TESTS(receiver.drawOval({0, 0, 10, 10}););
@@ -1117,8 +1122,9 @@ TEST_F(DisplayListTest, SingleOpsMightSupportGroupOpacityBlendMode) {
     RUN_TESTS2(receiver.drawDisplayList(display_list);, false);
   }
   RUN_TESTS2(receiver.drawTextBlob(TestBlob1, 0, 0);, false);
-  RUN_TESTS2(receiver.drawShadow(kTestPath1, SK_ColorBLACK, 1.0, false, 1.0);
-             , false);
+  RUN_TESTS2(
+      receiver.drawShadow(kTestPath1, DlColor(SK_ColorBLACK), 1.0, false, 1.0);
+      , false);
 
 #undef RUN_TESTS2
 #undef RUN_TESTS
@@ -1248,7 +1254,7 @@ TEST_F(DisplayListTest, SaveLayerOneSimpleOpInheritsOpacity) {
 
   DisplayListBuilder builder;
   DlOpReceiver& receiver = ToReceiver(builder);
-  receiver.setColor(SkColorSetARGB(127, 255, 255, 255));
+  receiver.setColor(DlColor(SkColorSetARGB(127, 255, 255, 255)));
   receiver.saveLayer(nullptr, SaveLayerOptions::kWithAttributes);
   receiver.drawRect({10, 10, 20, 20});
   receiver.restore();
@@ -1278,7 +1284,7 @@ TEST_F(DisplayListTest, SaveLayerTwoOverlappingOpsDoesNotInheritOpacity) {
 
   DisplayListBuilder builder;
   DlOpReceiver& receiver = ToReceiver(builder);
-  receiver.setColor(SkColorSetARGB(127, 255, 255, 255));
+  receiver.setColor(DlColor(SkColorSetARGB(127, 255, 255, 255)));
   receiver.saveLayer(nullptr, SaveLayerOptions::kWithAttributes);
   receiver.drawRect({10, 10, 20, 20});
   receiver.drawRect({15, 15, 25, 25});
@@ -1298,7 +1304,7 @@ TEST_F(DisplayListTest, NestedSaveLayersMightInheritOpacity) {
 
   DisplayListBuilder builder;
   DlOpReceiver& receiver = ToReceiver(builder);
-  receiver.setColor(SkColorSetARGB(127, 255, 255, 255));
+  receiver.setColor(DlColor(SkColorSetARGB(127, 255, 255, 255)));
   receiver.saveLayer(nullptr, SaveLayerOptions::kWithAttributes);
   receiver.saveLayer(nullptr, SaveLayerOptions::kWithAttributes);
   receiver.drawRect({10, 10, 20, 20});
@@ -1321,7 +1327,7 @@ TEST_F(DisplayListTest, NestedSaveLayersCanBothSupportOpacityOptimization) {
 
   DisplayListBuilder builder;
   DlOpReceiver& receiver = ToReceiver(builder);
-  receiver.setColor(SkColorSetARGB(127, 255, 255, 255));
+  receiver.setColor(DlColor(SkColorSetARGB(127, 255, 255, 255)));
   receiver.saveLayer(nullptr, SaveLayerOptions::kWithAttributes);
   receiver.saveLayer(nullptr, SaveLayerOptions::kNoAttributes);
   receiver.drawRect({10, 10, 20, 20});
@@ -1338,7 +1344,7 @@ TEST_F(DisplayListTest, SaveLayerImageFilterDoesNotInheritOpacity) {
 
   DisplayListBuilder builder;
   DlOpReceiver& receiver = ToReceiver(builder);
-  receiver.setColor(SkColorSetARGB(127, 255, 255, 255));
+  receiver.setColor(DlColor(SkColorSetARGB(127, 255, 255, 255)));
   receiver.setImageFilter(&kTestBlurImageFilter1);
   receiver.saveLayer(nullptr, SaveLayerOptions::kWithAttributes);
   receiver.setImageFilter(nullptr);
@@ -1355,7 +1361,7 @@ TEST_F(DisplayListTest, SaveLayerColorFilterDoesNotInheritOpacity) {
 
   DisplayListBuilder builder;
   DlOpReceiver& receiver = ToReceiver(builder);
-  receiver.setColor(SkColorSetARGB(127, 255, 255, 255));
+  receiver.setColor(DlColor(SkColorSetARGB(127, 255, 255, 255)));
   receiver.setColorFilter(&kTestMatrixColorFilter1);
   receiver.saveLayer(nullptr, SaveLayerOptions::kWithAttributes);
   receiver.setColorFilter(nullptr);
@@ -1372,7 +1378,7 @@ TEST_F(DisplayListTest, SaveLayerSrcBlendDoesNotInheritOpacity) {
 
   DisplayListBuilder builder;
   DlOpReceiver& receiver = ToReceiver(builder);
-  receiver.setColor(SkColorSetARGB(127, 255, 255, 255));
+  receiver.setColor(DlColor(SkColorSetARGB(127, 255, 255, 255)));
   receiver.setBlendMode(DlBlendMode::kSrc);
   receiver.saveLayer(nullptr, SaveLayerOptions::kWithAttributes);
   receiver.setBlendMode(DlBlendMode::kSrcOver);
@@ -1390,7 +1396,7 @@ TEST_F(DisplayListTest, SaveLayerImageFilterOnChildInheritsOpacity) {
 
   DisplayListBuilder builder;
   DlOpReceiver& receiver = ToReceiver(builder);
-  receiver.setColor(SkColorSetARGB(127, 255, 255, 255));
+  receiver.setColor(DlColor(SkColorSetARGB(127, 255, 255, 255)));
   receiver.saveLayer(nullptr, SaveLayerOptions::kWithAttributes);
   receiver.setImageFilter(&kTestBlurImageFilter1);
   receiver.drawRect({10, 10, 20, 20});
@@ -1406,7 +1412,7 @@ TEST_F(DisplayListTest, SaveLayerColorFilterOnChildDoesNotInheritOpacity) {
 
   DisplayListBuilder builder;
   DlOpReceiver& receiver = ToReceiver(builder);
-  receiver.setColor(SkColorSetARGB(127, 255, 255, 255));
+  receiver.setColor(DlColor(SkColorSetARGB(127, 255, 255, 255)));
   receiver.saveLayer(nullptr, SaveLayerOptions::kWithAttributes);
   receiver.setColorFilter(&kTestMatrixColorFilter1);
   receiver.drawRect({10, 10, 20, 20});
@@ -1422,7 +1428,7 @@ TEST_F(DisplayListTest, SaveLayerSrcBlendOnChildDoesNotInheritOpacity) {
 
   DisplayListBuilder builder;
   DlOpReceiver& receiver = ToReceiver(builder);
-  receiver.setColor(SkColorSetARGB(127, 255, 255, 255));
+  receiver.setColor(DlColor(SkColorSetARGB(127, 255, 255, 255)));
   receiver.saveLayer(nullptr, SaveLayerOptions::kWithAttributes);
   receiver.setBlendMode(DlBlendMode::kSrc);
   receiver.drawRect({10, 10, 20, 20});
@@ -3079,6 +3085,165 @@ TEST_F(DisplayListTest, DrawUnorderedRoundRectPathCCW) {
     canvas.DrawPath(path, paint);
   };
   check_inverted_bounds(renderer, "DrawRoundRectPath Counter-Clockwise");
+}
+
+TEST_F(DisplayListTest, NopOperationsOmittedFromRecords) {
+  auto run_tests = [](const std::string& name,
+                      void init(DisplayListBuilder & builder, DlPaint & paint),
+                      uint32_t expected_op_count = 0u) {
+    auto run_one_test =
+        [init](const std::string& name,
+               void build(DisplayListBuilder & builder, DlPaint & paint),
+               uint32_t expected_op_count = 0u) {
+          DisplayListBuilder builder;
+          DlPaint paint;
+          init(builder, paint);
+          build(builder, paint);
+          auto list = builder.Build();
+          if (list->op_count() != expected_op_count) {
+            FML_LOG(ERROR) << *list;
+          }
+          ASSERT_EQ(list->op_count(), expected_op_count) << name;
+          ASSERT_TRUE(list->bounds().isEmpty()) << name;
+        };
+    run_one_test(
+        name + " DrawColor",
+        [](DisplayListBuilder& builder, DlPaint& paint) {
+          builder.DrawColor(paint.getColor(), paint.getBlendMode());
+        },
+        expected_op_count);
+    run_one_test(
+        name + " DrawPaint",
+        [](DisplayListBuilder& builder, DlPaint& paint) {
+          builder.DrawPaint(paint);
+        },
+        expected_op_count);
+    run_one_test(
+        name + " DrawRect",
+        [](DisplayListBuilder& builder, DlPaint& paint) {
+          builder.DrawRect({10, 10, 20, 20}, paint);
+        },
+        expected_op_count);
+    run_one_test(
+        name + " Other Draw Ops",
+        [](DisplayListBuilder& builder, DlPaint& paint) {
+          builder.DrawLine({10, 10}, {20, 20}, paint);
+          builder.DrawOval({10, 10, 20, 20}, paint);
+          builder.DrawCircle({50, 50}, 20, paint);
+          builder.DrawRRect(SkRRect::MakeRectXY({10, 10, 20, 20}, 5, 5), paint);
+          builder.DrawDRRect(SkRRect::MakeRectXY({5, 5, 100, 100}, 5, 5),
+                             SkRRect::MakeRectXY({10, 10, 20, 20}, 5, 5),
+                             paint);
+          builder.DrawPath(kTestPath1, paint);
+          builder.DrawArc({10, 10, 20, 20}, 45, 90, true, paint);
+          SkPoint pts[] = {{10, 10}, {20, 20}};
+          builder.DrawPoints(PointMode::kLines, 2, pts, paint);
+          builder.DrawVertices(TestVertices1, DlBlendMode::kSrcOver, paint);
+          builder.DrawImage(TestImage1, {10, 10}, DlImageSampling::kLinear,
+                            &paint);
+          builder.DrawImageRect(TestImage1, SkRect{0.0f, 0.0f, 10.0f, 10.0f},
+                                SkRect{10.0f, 10.0f, 25.0f, 25.0f},
+                                DlImageSampling::kLinear, &paint);
+          builder.DrawImageNine(TestImage1, {10, 10, 20, 20},
+                                {10, 10, 100, 100}, DlFilterMode::kLinear,
+                                &paint);
+          SkRSXform xforms[] = {{1, 0, 10, 10}, {0, 1, 10, 10}};
+          SkRect rects[] = {{10, 10, 20, 20}, {10, 20, 30, 20}};
+          builder.DrawAtlas(TestImage1, xforms, rects, nullptr, 2,
+                            DlBlendMode::kSrcOver, DlImageSampling::kLinear,
+                            nullptr, &paint);
+          builder.DrawTextBlob(TestBlob1, 10, 10, paint);
+
+          // Dst mode eliminates most rendering ops except for
+          // the following two, so we'll prune those manually...
+          if (paint.getBlendMode() != DlBlendMode::kDst) {
+            builder.DrawDisplayList(TestDisplayList1, paint.getOpacity());
+            builder.DrawShadow(kTestPath1, paint.getColor(), 1, true, 1);
+          }
+        },
+        expected_op_count);
+    run_one_test(
+        name + " SaveLayer",
+        [](DisplayListBuilder& builder, DlPaint& paint) {
+          builder.SaveLayer(nullptr, &paint, nullptr);
+          builder.DrawRect({10, 10, 20, 20}, DlPaint());
+          builder.Restore();
+        },
+        expected_op_count);
+    run_one_test(
+        name + " inside Save",
+        [](DisplayListBuilder& builder, DlPaint& paint) {
+          builder.Save();
+          builder.DrawRect({10, 10, 20, 20}, paint);
+          builder.Restore();
+        },
+        expected_op_count);
+  };
+  run_tests("transparent color",  //
+            [](DisplayListBuilder& builder, DlPaint& paint) {
+              paint.setColor(DlColor::kTransparent());
+            });
+  run_tests("0 alpha",  //
+            [](DisplayListBuilder& builder, DlPaint& paint) {
+              // The transparent test above already tested transparent
+              // black (all 0s), we set White color here so we can test
+              // the case of all 1s with a 0 alpha
+              paint.setColor(DlColor::kWhite());
+              paint.setAlpha(0);
+            });
+  run_tests("BlendMode::kDst",  //
+            [](DisplayListBuilder& builder, DlPaint& paint) {
+              paint.setBlendMode(DlBlendMode::kDst);
+            });
+  run_tests("Empty rect clip",  //
+            [](DisplayListBuilder& builder, DlPaint& paint) {
+              builder.ClipRect(SkRect::MakeEmpty(), ClipOp::kIntersect, false);
+            });
+  run_tests("Empty rrect clip",  //
+            [](DisplayListBuilder& builder, DlPaint& paint) {
+              builder.ClipRRect(SkRRect::MakeEmpty(), ClipOp::kIntersect,
+                                false);
+            });
+  run_tests("Empty path clip",  //
+            [](DisplayListBuilder& builder, DlPaint& paint) {
+              builder.ClipPath(SkPath(), ClipOp::kIntersect, false);
+            });
+  run_tests("Transparent SaveLayer",  //
+            [](DisplayListBuilder& builder, DlPaint& paint) {
+              DlPaint save_paint;
+              save_paint.setColor(DlColor::kTransparent());
+              builder.SaveLayer(nullptr, &save_paint);
+            });
+  run_tests("0 alpha SaveLayer",  //
+            [](DisplayListBuilder& builder, DlPaint& paint) {
+              DlPaint save_paint;
+              // The transparent test above already tested transparent
+              // black (all 0s), we set White color here so we can test
+              // the case of all 1s with a 0 alpha
+              save_paint.setColor(DlColor::kWhite());
+              save_paint.setAlpha(0);
+              builder.SaveLayer(nullptr, &save_paint);
+            });
+  run_tests("Dst blended SaveLayer",  //
+            [](DisplayListBuilder& builder, DlPaint& paint) {
+              DlPaint save_paint;
+              save_paint.setBlendMode(DlBlendMode::kDst);
+              builder.SaveLayer(nullptr, &save_paint);
+            });
+  run_tests(
+      "Nop inside SaveLayer",
+      [](DisplayListBuilder& builder, DlPaint& paint) {
+        builder.SaveLayer(nullptr, nullptr);
+        paint.setBlendMode(DlBlendMode::kDst);
+      },
+      2u);
+  run_tests("DrawImage inside Culled SaveLayer",  //
+            [](DisplayListBuilder& builder, DlPaint& paint) {
+              DlPaint save_paint;
+              save_paint.setColor(DlColor::kTransparent());
+              builder.SaveLayer(nullptr, &save_paint);
+              builder.DrawImage(TestImage1, {10, 10}, DlImageSampling::kLinear);
+            });
 }
 
 }  // namespace testing

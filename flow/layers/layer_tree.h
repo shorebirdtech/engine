@@ -14,8 +14,6 @@
 #include "flutter/flow/raster_cache.h"
 #include "flutter/fml/macros.h"
 #include "flutter/fml/time/time_delta.h"
-#include "third_party/skia/include/core/SkPicture.h"
-#include "third_party/skia/include/core/SkSize.h"
 
 class GrDirectContext;
 
@@ -71,6 +69,8 @@ class LayerTree {
 
   /// When `Paint` is called, if leaf layer tracing is enabled, additional
   /// metadata around raterization of leaf layers is collected.
+  ///
+  /// This is not supported in the Impeller backend.
   ///
   /// See: `LayerSnapshotStore`
   void enable_leaf_layer_tracing(bool enable) {

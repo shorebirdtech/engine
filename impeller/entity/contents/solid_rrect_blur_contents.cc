@@ -8,6 +8,7 @@
 #include "impeller/entity/contents/content_context.h"
 #include "impeller/entity/entity.h"
 #include "impeller/geometry/color.h"
+#include "impeller/geometry/constants.h"
 #include "impeller/geometry/path.h"
 #include "impeller/geometry/path_builder.h"
 #include "impeller/renderer/render_pass.h"
@@ -55,7 +56,8 @@ std::optional<Rect> SolidRRectBlurContents::GetCoverage(
 bool SolidRRectBlurContents::Render(const ContentContext& renderer,
                                     const Entity& entity,
                                     RenderPass& pass) const {
-  if (!rect_.has_value()) {
+  // Early return if sigma is close to zero to avoid rendering NaNs.
+  if (!rect_.has_value() || std::fabs(sigma_.sigma) <= kEhCloseEnough) {
     return true;
   }
 
@@ -87,9 +89,14 @@ bool SolidRRectBlurContents::Render(const ContentContext& renderer,
   }
 
   Command cmd;
-  cmd.label = "RRect Shadow";
-  auto opts = OptionsFromPassAndEntity(pass, entity);
+  DEBUG_COMMAND_INFO(cmd, "RRect Shadow");
+  ContentContextOptions opts = OptionsFromPassAndEntity(pass, entity);
   opts.primitive_type = PrimitiveType::kTriangle;
+  Color color = color_;
+  if (entity.GetBlendMode() == BlendMode::kClear) {
+    opts.is_for_rrect_blur_clear = true;
+    color = Color::White();
+  }
   cmd.pipeline = renderer.GetRRectBlurPipeline(opts);
   cmd.stencil_reference = entity.GetStencilDepth();
 
@@ -102,7 +109,7 @@ bool SolidRRectBlurContents::Render(const ContentContext& renderer,
   VS::BindFrameInfo(cmd, pass.GetTransientsBuffer().EmplaceUniform(frame_info));
 
   FS::FragInfo frag_info;
-  frag_info.color = color_;
+  frag_info.color = color;
   frag_info.blur_sigma = blur_sigma;
   frag_info.rect_size = Point(positive_rect.size);
   frag_info.corner_radius =
@@ -114,6 +121,12 @@ bool SolidRRectBlurContents::Render(const ContentContext& renderer,
     return false;
   }
 
+  return true;
+}
+
+bool SolidRRectBlurContents::ApplyColorFilter(
+    const ColorFilterProc& color_filter_proc) {
+  color_ = color_filter_proc(color_);
   return true;
 }
 

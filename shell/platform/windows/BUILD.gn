@@ -96,8 +96,6 @@ source_set("flutter_windows_source") {
     "text_input_manager.h",
     "text_input_plugin.cc",
     "text_input_plugin.h",
-    "window.cc",
-    "window.h",
     "window_binding_handler.h",
     "window_binding_handler_delegate.h",
     "window_proc_delegate_manager.cc",
@@ -107,8 +105,6 @@ source_set("flutter_windows_source") {
     "windows_lifecycle_manager.h",
     "windows_proc_table.cc",
     "windows_proc_table.h",
-    "windows_registry.cc",
-    "windows_registry.h",
     "windowsx_shim.h",
   ]
 
@@ -223,6 +219,7 @@ executable("flutter_windows_unittests") {
     "text_input_plugin_unittest.cc",
     "window_proc_delegate_manager_unittests.cc",
     "window_unittests.cc",
+    "windows_lifecycle_manager_unittests.cc",
   ]
 
   configs +=

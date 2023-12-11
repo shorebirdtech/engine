@@ -253,7 +253,11 @@ void FlutterWindowsView::OnUpdateSemanticsEnabled(bool enabled) {
 }
 
 gfx::NativeViewAccessible FlutterWindowsView::GetNativeViewAccessible() {
-  return engine_->GetNativeViewAccessible();
+  if (!accessibility_bridge_) {
+    return nullptr;
+  }
+
+  return accessibility_bridge_->GetChildOfAXFragmentRoot();
 }
 
 void FlutterWindowsView::OnCursorRectUpdated(const Rect& rect) {
@@ -590,6 +594,12 @@ void FlutterWindowsView::CreateRenderSurface() {
     engine_->surface_manager()->CreateSurface(GetRenderTarget(), bounds.width,
                                               bounds.height, enable_vsync);
 
+    // The EGL context cannot be current on multiple threads.
+    // Creating the render surface runs on the platform thread and
+    // makes the EGL context current. Thus, the EGL context must be
+    // released so that the raster thread can use it for rendering.
+    engine_->surface_manager()->ClearCurrent();
+
     resize_target_width_ = bounds.width;
     resize_target_height_ = bounds.height;
   }
@@ -639,7 +649,7 @@ void FlutterWindowsView::NotifyWinEventWrapper(ui::AXPlatformNodeWin* node,
 }
 
 ui::AXFragmentRootDelegateWin* FlutterWindowsView::GetAxFragmentRootDelegate() {
-  return engine_->accessibility_bridge().lock().get();
+  return accessibility_bridge_.get();
 }
 
 ui::AXPlatformNodeWin* FlutterWindowsView::AlertNode() const {
@@ -664,8 +674,29 @@ void FlutterWindowsView::UpdateSemanticsEnabled(bool enabled) {
 }
 
 void FlutterWindowsView::OnDwmCompositionChanged() {
-  if (engine_->surface_manager()) {
-    engine_->surface_manager()->SetVSyncEnabled(binding_handler_->NeedsVSync());
+  AngleSurfaceManager* surface_manager = engine_->surface_manager();
+  if (!surface_manager) {
+    return;
+  }
+
+  // Update the surface with the new composition state.
+  // Switch to the raster thread as the render EGL context can only be
+  // current on a single thread a time.
+  auto needs_vsync = binding_handler_->NeedsVSync();
+  engine_->PostRasterThreadTask([surface_manager, needs_vsync]() {
+    if (!surface_manager->MakeCurrent()) {
+      FML_LOG(ERROR)
+          << "Unable to make surface current to update the swap interval";
+      return;
+    }
+
+    surface_manager->SetVSyncEnabled(needs_vsync);
+  });
+}
+
+void FlutterWindowsView::OnWindowStateEvent(HWND hwnd, WindowStateEvent event) {
+  if (engine_) {
+    engine_->OnWindowStateEvent(hwnd, event);
   }
 }
 

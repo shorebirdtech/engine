@@ -77,7 +77,7 @@ class MockDelegate : public PlatformView::Delegate {
   void OnPlatformViewDestroyed() override {}
   void OnPlatformViewScheduleFrame() override {}
   void OnPlatformViewSetNextFrameCallback(const fml::closure& closure) override {}
-  void OnPlatformViewSetViewportMetrics(const ViewportMetrics& metrics) override {}
+  void OnPlatformViewSetViewportMetrics(int64_t view_id, const ViewportMetrics& metrics) override {}
   const flutter::Settings& OnPlatformViewGetSettings() const override { return settings_; }
   void OnPlatformViewDispatchPlatformMessage(std::unique_ptr<PlatformMessage> message) override {}
   void OnPlatformViewDispatchPointerDataPacket(std::unique_ptr<PointerDataPacket> packet) override {
@@ -125,7 +125,7 @@ class MockIosDelegate : public AccessibilityBridge::IosDelegate {
 }  // namespace flutter
 
 namespace {
-fml::RefPtr<fml::TaskRunner> CreateNewThread(std::string name) {
+fml::RefPtr<fml::TaskRunner> CreateNewThread(const std::string& name) {
   auto thread = std::make_unique<fml::Thread>(name);
   auto runner = thread->GetTaskRunner();
   return runner;
@@ -288,7 +288,7 @@ fml::RefPtr<fml::TaskRunner> CreateNewThread(std::string name) {
     std::string label = "some label";
     flutterPlatformViewsController->SetFlutterView(mockFlutterView);
 
-    MockFlutterPlatformFactory* factory = [[MockFlutterPlatformFactory new] autorelease];
+    MockFlutterPlatformFactory* factory = [[[MockFlutterPlatformFactory alloc] init] autorelease];
     flutterPlatformViewsController->RegisterViewFactory(
         factory, @"MockFlutterPlatformView",
         FlutterPlatformViewGestureRecognizersBlockingPolicyEager);
@@ -342,7 +342,7 @@ fml::RefPtr<fml::TaskRunner> CreateNewThread(std::string name) {
         /*worker_task_runner=*/nil,
         /*is_gpu_disabled_sync_switch=*/nil);
 
-    MockFlutterPlatformFactory* factory = [[MockFlutterPlatformFactory new] autorelease];
+    MockFlutterPlatformFactory* factory = [[[MockFlutterPlatformFactory alloc] init] autorelease];
     flutterPlatformViewsController->RegisterViewFactory(
         factory, @"MockFlutterPlatformView",
         FlutterPlatformViewGestureRecognizersBlockingPolicyEager);

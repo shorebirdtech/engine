@@ -37,7 +37,7 @@
 #include "flutter/shell/platform/windows/window_proc_delegate_manager.h"
 #include "flutter/shell/platform/windows/window_state.h"
 #include "flutter/shell/platform/windows/windows_lifecycle_manager.h"
-#include "flutter/shell/platform/windows/windows_registry.h"
+#include "flutter/shell/platform/windows/windows_proc_table.h"
 #include "third_party/rapidjson/include/rapidjson/document.h"
 
 namespace flutter {
@@ -77,13 +77,8 @@ static void WindowsPlatformThreadPrioritySetter(
 // run in headless mode.
 class FlutterWindowsEngine {
  public:
-  // Creates a new Flutter engine with an injectible windows registry.
-  FlutterWindowsEngine(const FlutterProjectBundle& project,
-                       std::unique_ptr<WindowsRegistry> windows_registry);
-
   // Creates a new Flutter engine object configured to run |project|.
-  explicit FlutterWindowsEngine(const FlutterProjectBundle& project)
-      : FlutterWindowsEngine(project, std::make_unique<WindowsRegistry>()) {}
+  explicit FlutterWindowsEngine(const FlutterProjectBundle& project);
 
   virtual ~FlutterWindowsEngine();
 
@@ -146,9 +141,6 @@ class FlutterWindowsEngine {
   // rendering using software instead of OpenGL.
   AngleSurfaceManager* surface_manager() { return surface_manager_.get(); }
 
-  // Return the AccessibilityBridgeWindows for this engine's view.
-  std::weak_ptr<AccessibilityBridgeWindows> accessibility_bridge();
-
   WindowProcDelegateManager* window_proc_delegate_manager() {
     return window_proc_delegate_manager_.get();
   }
@@ -207,7 +199,7 @@ class FlutterWindowsEngine {
   bool MarkExternalTextureFrameAvailable(int64_t texture_id);
 
   // Posts the given callback onto the raster thread.
-  bool PostRasterThreadTask(fml::closure callback);
+  virtual bool PostRasterThreadTask(fml::closure callback);
 
   // Invoke on the embedder's vsync callback to schedule a frame.
   void OnVsync(intptr_t baton);
@@ -231,10 +223,6 @@ class FlutterWindowsEngine {
 
   // Returns true if the high contrast feature is enabled.
   bool high_contrast_enabled() const { return high_contrast_enabled_; }
-
-  // Returns the native accessibility root node, or nullptr if one does not
-  // exist.
-  gfx::NativeViewAccessible GetNativeViewAccessible();
 
   // Register a root isolate create callback.
   //
@@ -270,9 +258,21 @@ class FlutterWindowsEngine {
   // Called when a WM_DWMCOMPOSITIONCHANGED message is received.
   void OnDwmCompositionChanged();
 
-  // Called in response to the framework registering a ServiceBindings.
-  // Registers the top level handler for the WM_CLOSE window message.
-  void OnApplicationLifecycleEnabled();
+  // Called when a Window receives an event that may alter the application
+  // lifecycle state.
+  void OnWindowStateEvent(HWND hwnd, WindowStateEvent event);
+
+  // Handle a message from a non-Flutter window in the same application.
+  // Returns a result when the message is consumed and should not be processed
+  // further.
+  std::optional<LRESULT> ProcessExternalWindowMessage(HWND hwnd,
+                                                      UINT message,
+                                                      WPARAM wparam,
+                                                      LPARAM lparam);
+
+  WindowsLifecycleManager* lifecycle_manager() {
+    return lifecycle_manager_.get();
+  }
 
  protected:
   // Creates the keyboard key handler.
@@ -296,6 +296,10 @@ class FlutterWindowsEngine {
   // This should reset necessary states to as if the engine has just been
   // created. This is typically caused by a hot restart (Shift-R in CLI.)
   void OnPreEngineRestart();
+
+  // Invoked by the engine when a listener is set or cleared on a platform
+  // channel.
+  virtual void OnChannelUpdate(std::string name, bool listening);
 
  private:
   // Allows swapping out embedder_api_ calls in tests.
@@ -396,6 +400,8 @@ class FlutterWindowsEngine {
 
   bool high_contrast_enabled_ = false;
 
+  bool enable_impeller_ = false;
+
   // The manager for WindowProc delegate registration and callbacks.
   std::unique_ptr<WindowProcDelegateManager> window_proc_delegate_manager_;
 
@@ -405,11 +411,10 @@ class FlutterWindowsEngine {
   // The on frame drawn callback.
   fml::closure next_frame_callback_;
 
-  // Wrapper providing Windows registry access.
-  std::unique_ptr<WindowsRegistry> windows_registry_;
-
   // Handler for top level window messages.
   std::unique_ptr<WindowsLifecycleManager> lifecycle_manager_;
+
+  WindowsProcTable windows_proc_table_;
 
   FML_DISALLOW_COPY_AND_ASSIGN(FlutterWindowsEngine);
 };

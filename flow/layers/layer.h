@@ -14,10 +14,10 @@
 #include "flutter/display_list/dl_canvas.h"
 #include "flutter/flow/diff_context.h"
 #include "flutter/flow/embedded_views.h"
-#include "flutter/flow/instrumentation.h"
 #include "flutter/flow/layer_snapshot_store.h"
 #include "flutter/flow/layers/layer_state_stack.h"
 #include "flutter/flow/raster_cache.h"
+#include "flutter/flow/stopwatch.h"
 #include "flutter/fml/build_config.h"
 #include "flutter/fml/compiler_specific.h"
 #include "flutter/fml/logging.h"
@@ -82,12 +82,6 @@ struct PrerollContext {
   int renderable_state_flags = 0;
 
   std::vector<RasterCacheItem*>* raster_cached_entries;
-
-  // This flag will be set to true iff the frame will be constructing
-  // a DisplayList for the layer tree. This flag is mostly of note to
-  // the embedders that must decide between creating SkPicture or
-  // DisplayList objects for the inter-view slices of the layer tree.
-  bool display_list_enabled = false;
 };
 
 struct PaintContext {
@@ -123,6 +117,7 @@ struct PaintContext {
   // only when leaf layer tracing is enabled.
   LayerSnapshotStore* layer_snapshot_store = nullptr;
   bool enable_leaf_layer_tracing = false;
+  bool impeller_enabled = false;
   impeller::AiksContext* aiks_context;
 };
 

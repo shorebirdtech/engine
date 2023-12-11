@@ -94,7 +94,7 @@ class FlutterPlatformViewsTestMockPlatformViewDelegate : public PlatformView::De
   void OnPlatformViewDestroyed() override {}
   void OnPlatformViewScheduleFrame() override {}
   void OnPlatformViewSetNextFrameCallback(const fml::closure& closure) override {}
-  void OnPlatformViewSetViewportMetrics(const ViewportMetrics& metrics) override {}
+  void OnPlatformViewSetViewportMetrics(int64_t view_id, const ViewportMetrics& metrics) override {}
   const flutter::Settings& OnPlatformViewGetSettings() const override { return settings_; }
   void OnPlatformViewDispatchPlatformMessage(std::unique_ptr<PlatformMessage> message) override {}
   void OnPlatformViewDispatchPointerDataPacket(std::unique_ptr<PointerDataPacket> packet) override {
@@ -126,7 +126,7 @@ class FlutterPlatformViewsTestMockPlatformViewDelegate : public PlatformView::De
 }  // namespace flutter
 
 namespace {
-fml::RefPtr<fml::TaskRunner> CreateNewThread(std::string name) {
+fml::RefPtr<fml::TaskRunner> CreateNewThread(const std::string& name) {
   auto thread = std::make_unique<fml::Thread>(name);
   auto runner = thread->GetTaskRunner();
   return runner;
@@ -156,7 +156,7 @@ fml::RefPtr<fml::TaskRunner> CreateNewThread(std::string name) {
       /*is_gpu_disabled_sync_switch=*/nil);
 
   FlutterPlatformViewsTestMockFlutterPlatformFactory* factory =
-      [[FlutterPlatformViewsTestMockFlutterPlatformFactory new] autorelease];
+      [[[FlutterPlatformViewsTestMockFlutterPlatformFactory alloc] init] autorelease];
   flutterPlatformViewsController->RegisterViewFactory(
       factory, @"MockFlutterPlatformView",
       FlutterPlatformViewGestureRecognizersBlockingPolicyEager);
@@ -212,7 +212,7 @@ fml::RefPtr<fml::TaskRunner> CreateNewThread(std::string name) {
       /*is_gpu_disabled_sync_switch=*/nil);
 
   FlutterPlatformViewsTestMockFlutterPlatformFactory* factory =
-      [[FlutterPlatformViewsTestMockFlutterPlatformFactory new] autorelease];
+      [[[FlutterPlatformViewsTestMockFlutterPlatformFactory alloc] init] autorelease];
   flutterPlatformViewsController->RegisterViewFactory(
       factory, @"MockFlutterPlatformView",
       FlutterPlatformViewGestureRecognizersBlockingPolicyEager);
@@ -266,7 +266,7 @@ fml::RefPtr<fml::TaskRunner> CreateNewThread(std::string name) {
       /*is_gpu_disabled_sync_switch=*/nil);
 
   FlutterPlatformViewsTestMockFlutterPlatformFactory* factory =
-      [[FlutterPlatformViewsTestMockFlutterPlatformFactory new] autorelease];
+      [[[FlutterPlatformViewsTestMockFlutterPlatformFactory alloc] init] autorelease];
   flutterPlatformViewsController->RegisterViewFactory(
       factory, @"MockFlutterPlatformView",
       FlutterPlatformViewGestureRecognizersBlockingPolicyEager);
@@ -338,7 +338,7 @@ fml::RefPtr<fml::TaskRunner> CreateNewThread(std::string name) {
       /*is_gpu_disabled_sync_switch=*/nil);
 
   FlutterPlatformViewsTestMockFlutterPlatformFactory* factory =
-      [[FlutterPlatformViewsTestMockFlutterPlatformFactory new] autorelease];
+      [[[FlutterPlatformViewsTestMockFlutterPlatformFactory alloc] init] autorelease];
   flutterPlatformViewsController->RegisterViewFactory(
       factory, @"MockFlutterPlatformView",
       FlutterPlatformViewGestureRecognizersBlockingPolicyEager);
@@ -410,7 +410,7 @@ fml::RefPtr<fml::TaskRunner> CreateNewThread(std::string name) {
       /*is_gpu_disabled_sync_switch=*/nil);
 
   FlutterPlatformViewsTestMockFlutterPlatformFactory* factory =
-      [[FlutterPlatformViewsTestMockFlutterPlatformFactory new] autorelease];
+      [[[FlutterPlatformViewsTestMockFlutterPlatformFactory alloc] init] autorelease];
   flutterPlatformViewsController->RegisterViewFactory(
       factory, @"MockFlutterPlatformView",
       FlutterPlatformViewGestureRecognizersBlockingPolicyEager);
@@ -483,7 +483,7 @@ fml::RefPtr<fml::TaskRunner> CreateNewThread(std::string name) {
       /*is_gpu_disabled_sync_switch=*/nil);
 
   FlutterPlatformViewsTestMockFlutterPlatformFactory* factory =
-      [[FlutterPlatformViewsTestMockFlutterPlatformFactory new] autorelease];
+      [[[FlutterPlatformViewsTestMockFlutterPlatformFactory alloc] init] autorelease];
   flutterPlatformViewsController->RegisterViewFactory(
       factory, @"MockFlutterPlatformView",
       FlutterPlatformViewGestureRecognizersBlockingPolicyEager);
@@ -596,7 +596,7 @@ fml::RefPtr<fml::TaskRunner> CreateNewThread(std::string name) {
       /*is_gpu_disabled_sync_switch=*/nil);
 
   FlutterPlatformViewsTestMockFlutterPlatformFactory* factory =
-      [[FlutterPlatformViewsTestMockFlutterPlatformFactory new] autorelease];
+      [[[FlutterPlatformViewsTestMockFlutterPlatformFactory alloc] init] autorelease];
   flutterPlatformViewsController->RegisterViewFactory(
       factory, @"MockFlutterPlatformView",
       FlutterPlatformViewGestureRecognizersBlockingPolicyEager);
@@ -733,7 +733,7 @@ fml::RefPtr<fml::TaskRunner> CreateNewThread(std::string name) {
       /*is_gpu_disabled_sync_switch=*/nil);
 
   FlutterPlatformViewsTestMockFlutterPlatformFactory* factory =
-      [[FlutterPlatformViewsTestMockFlutterPlatformFactory new] autorelease];
+      [[[FlutterPlatformViewsTestMockFlutterPlatformFactory alloc] init] autorelease];
   flutterPlatformViewsController->RegisterViewFactory(
       factory, @"MockFlutterPlatformView",
       FlutterPlatformViewGestureRecognizersBlockingPolicyEager);
@@ -1010,7 +1010,7 @@ fml::RefPtr<fml::TaskRunner> CreateNewThread(std::string name) {
       /*is_gpu_disabled_sync_switch=*/nil);
 
   FlutterPlatformViewsTestMockFlutterPlatformFactory* factory =
-      [[FlutterPlatformViewsTestMockFlutterPlatformFactory new] autorelease];
+      [[[FlutterPlatformViewsTestMockFlutterPlatformFactory alloc] init] autorelease];
   flutterPlatformViewsController->RegisterViewFactory(
       factory, @"MockFlutterPlatformView",
       FlutterPlatformViewGestureRecognizersBlockingPolicyEager);
@@ -1209,29 +1209,29 @@ fml::RefPtr<fml::TaskRunner> CreateNewThread(std::string name) {
   // The gaussianBlur filter is extracted from UIVisualEffectView.
   // Each test requires a new PlatformViewFilter
   // Valid UIVisualEffectView API
-  UIVisualEffectView* visualEffectView = [[UIVisualEffectView alloc]
-      initWithEffect:[UIBlurEffect effectWithStyle:UIBlurEffectStyleLight]];
+  UIVisualEffectView* visualEffectView = [[[UIVisualEffectView alloc]
+      initWithEffect:[UIBlurEffect effectWithStyle:UIBlurEffectStyleLight]] autorelease];
   PlatformViewFilter* platformViewFilter =
-      [[PlatformViewFilter alloc] initWithFrame:CGRectMake(0, 0, 10, 10)
-                                     blurRadius:5
-                               visualEffectView:visualEffectView];
+      [[[PlatformViewFilter alloc] initWithFrame:CGRectMake(0, 0, 10, 10)
+                                      blurRadius:5
+                                visualEffectView:visualEffectView] autorelease];
   XCTAssertNotNil(platformViewFilter);
 }
 
 - (void)testApplyBackdropFilterAPIChangedInvalidUIVisualEffectView {
   [PlatformViewFilter resetPreparation];
-  UIVisualEffectView* visualEffectView = [[UIVisualEffectView alloc] init];
+  UIVisualEffectView* visualEffectView = [[[UIVisualEffectView alloc] init] autorelease];
   PlatformViewFilter* platformViewFilter =
-      [[PlatformViewFilter alloc] initWithFrame:CGRectMake(0, 0, 10, 10)
-                                     blurRadius:5
-                               visualEffectView:visualEffectView];
+      [[[PlatformViewFilter alloc] initWithFrame:CGRectMake(0, 0, 10, 10)
+                                      blurRadius:5
+                                visualEffectView:visualEffectView] autorelease];
   XCTAssertNil(platformViewFilter);
 }
 
 - (void)testApplyBackdropFilterAPIChangedNoGaussianBlurFilter {
   [PlatformViewFilter resetPreparation];
-  UIVisualEffectView* editedUIVisualEffectView = [[UIVisualEffectView alloc]
-      initWithEffect:[UIBlurEffect effectWithStyle:UIBlurEffectStyleLight]];
+  UIVisualEffectView* editedUIVisualEffectView = [[[UIVisualEffectView alloc]
+      initWithEffect:[UIBlurEffect effectWithStyle:UIBlurEffectStyleLight]] autorelease];
   NSArray* subviews = editedUIVisualEffectView.subviews;
   for (UIView* view in subviews) {
     if ([NSStringFromClass([view class]) hasSuffix:@"BackdropView"]) {
@@ -1245,16 +1245,16 @@ fml::RefPtr<fml::TaskRunner> CreateNewThread(std::string name) {
     }
   }
   PlatformViewFilter* platformViewFilter =
-      [[PlatformViewFilter alloc] initWithFrame:CGRectMake(0, 0, 10, 10)
-                                     blurRadius:5
-                               visualEffectView:editedUIVisualEffectView];
+      [[[PlatformViewFilter alloc] initWithFrame:CGRectMake(0, 0, 10, 10)
+                                      blurRadius:5
+                                visualEffectView:editedUIVisualEffectView] autorelease];
   XCTAssertNil(platformViewFilter);
 }
 
 - (void)testApplyBackdropFilterAPIChangedInvalidInputRadius {
   [PlatformViewFilter resetPreparation];
-  UIVisualEffectView* editedUIVisualEffectView = [[UIVisualEffectView alloc]
-      initWithEffect:[UIBlurEffect effectWithStyle:UIBlurEffectStyleLight]];
+  UIVisualEffectView* editedUIVisualEffectView = [[[UIVisualEffectView alloc]
+      initWithEffect:[UIBlurEffect effectWithStyle:UIBlurEffectStyleLight]] autorelease];
   NSArray* subviews = editedUIVisualEffectView.subviews;
   for (UIView* view in subviews) {
     if ([NSStringFromClass([view class]) hasSuffix:@"BackdropView"]) {
@@ -1269,20 +1269,20 @@ fml::RefPtr<fml::TaskRunner> CreateNewThread(std::string name) {
   }
 
   PlatformViewFilter* platformViewFilter =
-      [[PlatformViewFilter alloc] initWithFrame:CGRectMake(0, 0, 10, 10)
-                                     blurRadius:5
-                               visualEffectView:editedUIVisualEffectView];
+      [[[PlatformViewFilter alloc] initWithFrame:CGRectMake(0, 0, 10, 10)
+                                      blurRadius:5
+                                visualEffectView:editedUIVisualEffectView] autorelease];
   XCTAssertNil(platformViewFilter);
 }
 
 - (void)testBackdropFilterVisualEffectSubviewBackgroundColor {
-  UIVisualEffectView* visualEffectView = [[UIVisualEffectView alloc]
-      initWithEffect:[UIBlurEffect effectWithStyle:UIBlurEffectStyleLight]];
+  UIVisualEffectView* visualEffectView = [[[UIVisualEffectView alloc]
+      initWithEffect:[UIBlurEffect effectWithStyle:UIBlurEffectStyleLight]] autorelease];
   PlatformViewFilter* platformViewFilter =
-      [[PlatformViewFilter alloc] initWithFrame:CGRectMake(0, 0, 10, 10)
-                                     blurRadius:5
-                               visualEffectView:visualEffectView];
-  CGColorRef visualEffectSubviewBackgroundColor;
+      [[[PlatformViewFilter alloc] initWithFrame:CGRectMake(0, 0, 10, 10)
+                                      blurRadius:5
+                                visualEffectView:visualEffectView] autorelease];
+  CGColorRef visualEffectSubviewBackgroundColor = nil;
   for (UIView* view in [platformViewFilter backdropFilterView].subviews) {
     if ([NSStringFromClass([view class]) hasSuffix:@"VisualEffectSubview"]) {
       visualEffectSubviewBackgroundColor = view.layer.backgroundColor;
@@ -1310,7 +1310,7 @@ fml::RefPtr<fml::TaskRunner> CreateNewThread(std::string name) {
       /*is_gpu_disabled_sync_switch=*/nil);
 
   FlutterPlatformViewsTestMockFlutterPlatformFactory* factory =
-      [[FlutterPlatformViewsTestMockFlutterPlatformFactory new] autorelease];
+      [[[FlutterPlatformViewsTestMockFlutterPlatformFactory alloc] init] autorelease];
   flutterPlatformViewsController->RegisterViewFactory(
       factory, @"MockFlutterPlatformView",
       FlutterPlatformViewGestureRecognizersBlockingPolicyEager);
@@ -1366,7 +1366,7 @@ fml::RefPtr<fml::TaskRunner> CreateNewThread(std::string name) {
       /*is_gpu_disabled_sync_switch=*/nil);
 
   FlutterPlatformViewsTestMockFlutterPlatformFactory* factory =
-      [[FlutterPlatformViewsTestMockFlutterPlatformFactory new] autorelease];
+      [[[FlutterPlatformViewsTestMockFlutterPlatformFactory alloc] init] autorelease];
   flutterPlatformViewsController->RegisterViewFactory(
       factory, @"MockFlutterPlatformView",
       FlutterPlatformViewGestureRecognizersBlockingPolicyEager);
@@ -1460,7 +1460,7 @@ fml::RefPtr<fml::TaskRunner> CreateNewThread(std::string name) {
       /*is_gpu_disabled_sync_switch=*/nil);
 
   FlutterPlatformViewsTestMockFlutterPlatformFactory* factory =
-      [[FlutterPlatformViewsTestMockFlutterPlatformFactory new] autorelease];
+      [[[FlutterPlatformViewsTestMockFlutterPlatformFactory alloc] init] autorelease];
   flutterPlatformViewsController->RegisterViewFactory(
       factory, @"MockFlutterPlatformView",
       FlutterPlatformViewGestureRecognizersBlockingPolicyEager);
@@ -1531,7 +1531,7 @@ fml::RefPtr<fml::TaskRunner> CreateNewThread(std::string name) {
       /*is_gpu_disabled_sync_switch=*/nil);
 
   FlutterPlatformViewsTestMockFlutterPlatformFactory* factory =
-      [[FlutterPlatformViewsTestMockFlutterPlatformFactory new] autorelease];
+      [[[FlutterPlatformViewsTestMockFlutterPlatformFactory alloc] init] autorelease];
   flutterPlatformViewsController->RegisterViewFactory(
       factory, @"MockFlutterPlatformView",
       FlutterPlatformViewGestureRecognizersBlockingPolicyEager);
@@ -1598,7 +1598,7 @@ fml::RefPtr<fml::TaskRunner> CreateNewThread(std::string name) {
       /*is_gpu_disabled_sync_switch=*/nil);
 
   FlutterPlatformViewsTestMockFlutterPlatformFactory* factory =
-      [[FlutterPlatformViewsTestMockFlutterPlatformFactory new] autorelease];
+      [[[FlutterPlatformViewsTestMockFlutterPlatformFactory alloc] init] autorelease];
   flutterPlatformViewsController->RegisterViewFactory(
       factory, @"MockFlutterPlatformView",
       FlutterPlatformViewGestureRecognizersBlockingPolicyEager);
@@ -1664,7 +1664,7 @@ fml::RefPtr<fml::TaskRunner> CreateNewThread(std::string name) {
       /*is_gpu_disabled_sync_switch=*/nil);
 
   FlutterPlatformViewsTestMockFlutterPlatformFactory* factory =
-      [[FlutterPlatformViewsTestMockFlutterPlatformFactory new] autorelease];
+      [[[FlutterPlatformViewsTestMockFlutterPlatformFactory alloc] init] autorelease];
   flutterPlatformViewsController->RegisterViewFactory(
       factory, @"MockFlutterPlatformView",
       FlutterPlatformViewGestureRecognizersBlockingPolicyEager);
@@ -1737,7 +1737,7 @@ fml::RefPtr<fml::TaskRunner> CreateNewThread(std::string name) {
       /*is_gpu_disabled_sync_switch=*/nil);
 
   FlutterPlatformViewsTestMockFlutterPlatformFactory* factory =
-      [[FlutterPlatformViewsTestMockFlutterPlatformFactory new] autorelease];
+      [[[FlutterPlatformViewsTestMockFlutterPlatformFactory alloc] init] autorelease];
   flutterPlatformViewsController->RegisterViewFactory(
       factory, @"MockFlutterPlatformView",
       FlutterPlatformViewGestureRecognizersBlockingPolicyEager);
@@ -1810,7 +1810,7 @@ fml::RefPtr<fml::TaskRunner> CreateNewThread(std::string name) {
       /*is_gpu_disabled_sync_switch=*/nil);
 
   FlutterPlatformViewsTestMockFlutterPlatformFactory* factory =
-      [[FlutterPlatformViewsTestMockFlutterPlatformFactory new] autorelease];
+      [[[FlutterPlatformViewsTestMockFlutterPlatformFactory alloc] init] autorelease];
   flutterPlatformViewsController->RegisterViewFactory(
       factory, @"MockFlutterPlatformView",
       FlutterPlatformViewGestureRecognizersBlockingPolicyEager);
@@ -1884,7 +1884,7 @@ fml::RefPtr<fml::TaskRunner> CreateNewThread(std::string name) {
       /*is_gpu_disabled_sync_switch=*/nil);
 
   FlutterPlatformViewsTestMockFlutterPlatformFactory* factory =
-      [[FlutterPlatformViewsTestMockFlutterPlatformFactory new] autorelease];
+      [[[FlutterPlatformViewsTestMockFlutterPlatformFactory alloc] init] autorelease];
   flutterPlatformViewsController->RegisterViewFactory(
       factory, @"MockFlutterPlatformView",
       FlutterPlatformViewGestureRecognizersBlockingPolicyEager);
@@ -1948,7 +1948,7 @@ fml::RefPtr<fml::TaskRunner> CreateNewThread(std::string name) {
       /*is_gpu_disabled_sync_switch=*/nil);
 
   FlutterPlatformViewsTestMockFlutterPlatformFactory* factory =
-      [[FlutterPlatformViewsTestMockFlutterPlatformFactory new] autorelease];
+      [[[FlutterPlatformViewsTestMockFlutterPlatformFactory alloc] init] autorelease];
   flutterPlatformViewsController->RegisterViewFactory(
       factory, @"MockFlutterPlatformView",
       FlutterPlatformViewGestureRecognizersBlockingPolicyEager);
@@ -2069,7 +2069,7 @@ fml::RefPtr<fml::TaskRunner> CreateNewThread(std::string name) {
       /*is_gpu_disabled_sync_switch=*/nil);
 
   FlutterPlatformViewsTestMockFlutterPlatformFactory* factory =
-      [[FlutterPlatformViewsTestMockFlutterPlatformFactory new] autorelease];
+      [[[FlutterPlatformViewsTestMockFlutterPlatformFactory alloc] init] autorelease];
   flutterPlatformViewsController->RegisterViewFactory(
       factory, @"MockFlutterPlatformView",
       FlutterPlatformViewGestureRecognizersBlockingPolicyEager);
@@ -2180,7 +2180,7 @@ fml::RefPtr<fml::TaskRunner> CreateNewThread(std::string name) {
       /*is_gpu_disabled_sync_switch=*/nil);
 
   FlutterPlatformViewsTestMockFlutterPlatformFactory* factory =
-      [[FlutterPlatformViewsTestMockFlutterPlatformFactory new] autorelease];
+      [[[FlutterPlatformViewsTestMockFlutterPlatformFactory alloc] init] autorelease];
   flutterPlatformViewsController->RegisterViewFactory(
       factory, @"MockFlutterPlatformView",
       FlutterPlatformViewGestureRecognizersBlockingPolicyEager);
@@ -2242,7 +2242,7 @@ fml::RefPtr<fml::TaskRunner> CreateNewThread(std::string name) {
       /*is_gpu_disabled_sync_switch=*/nil);
 
   FlutterPlatformViewsTestMockFlutterPlatformFactory* factory =
-      [[FlutterPlatformViewsTestMockFlutterPlatformFactory new] autorelease];
+      [[[FlutterPlatformViewsTestMockFlutterPlatformFactory alloc] init] autorelease];
   flutterPlatformViewsController->RegisterViewFactory(
       factory, @"MockFlutterPlatformView",
       FlutterPlatformViewGestureRecognizersBlockingPolicyEager);
@@ -2307,7 +2307,7 @@ fml::RefPtr<fml::TaskRunner> CreateNewThread(std::string name) {
   flutterPlatformViewsController->SetFlutterView(mockFlutterView);
 
   FlutterPlatformViewsTestMockFlutterPlatformFactory* factory =
-      [[FlutterPlatformViewsTestMockFlutterPlatformFactory new] autorelease];
+      [[[FlutterPlatformViewsTestMockFlutterPlatformFactory alloc] init] autorelease];
   flutterPlatformViewsController->RegisterViewFactory(
       factory, @"MockFlutterPlatformView",
       FlutterPlatformViewGestureRecognizersBlockingPolicyEager);
@@ -2357,7 +2357,7 @@ fml::RefPtr<fml::TaskRunner> CreateNewThread(std::string name) {
   flutterPlatformViewsController->SetFlutterView(mockFlutterView);
 
   FlutterPlatformViewsTestMockFlutterPlatformFactory* factory =
-      [[FlutterPlatformViewsTestMockFlutterPlatformFactory new] autorelease];
+      [[[FlutterPlatformViewsTestMockFlutterPlatformFactory alloc] init] autorelease];
   flutterPlatformViewsController->RegisterViewFactory(
       factory, @"MockFlutterPlatformView",
       FlutterPlatformViewGestureRecognizersBlockingPolicyEager);
@@ -2413,7 +2413,7 @@ fml::RefPtr<fml::TaskRunner> CreateNewThread(std::string name) {
   flutterPlatformViewsController->SetFlutterView(mockFlutterView);
 
   FlutterPlatformViewsTestMockFlutterPlatformFactory* factory =
-      [[FlutterPlatformViewsTestMockFlutterPlatformFactory new] autorelease];
+      [[[FlutterPlatformViewsTestMockFlutterPlatformFactory alloc] init] autorelease];
   flutterPlatformViewsController->RegisterViewFactory(
       factory, @"MockFlutterPlatformView",
       FlutterPlatformViewGestureRecognizersBlockingPolicyEager);
@@ -2511,7 +2511,7 @@ fml::RefPtr<fml::TaskRunner> CreateNewThread(std::string name) {
   flutterPlatformViewsController->SetFlutterView(mockFlutterView);
 
   FlutterPlatformViewsTestMockFlutterPlatformFactory* factory =
-      [[FlutterPlatformViewsTestMockFlutterPlatformFactory new] autorelease];
+      [[[FlutterPlatformViewsTestMockFlutterPlatformFactory alloc] init] autorelease];
   flutterPlatformViewsController->RegisterViewFactory(
       factory, @"MockFlutterPlatformView",
       FlutterPlatformViewGestureRecognizersBlockingPolicyEager);
@@ -2609,7 +2609,7 @@ fml::RefPtr<fml::TaskRunner> CreateNewThread(std::string name) {
   flutterPlatformViewsController->SetFlutterView(mockFlutterView);
 
   FlutterPlatformViewsTestMockFlutterPlatformFactory* factory =
-      [[FlutterPlatformViewsTestMockFlutterPlatformFactory new] autorelease];
+      [[[FlutterPlatformViewsTestMockFlutterPlatformFactory alloc] init] autorelease];
   flutterPlatformViewsController->RegisterViewFactory(
       factory, @"MockFlutterPlatformView",
       FlutterPlatformViewGestureRecognizersBlockingPolicyEager);
@@ -2646,8 +2646,8 @@ fml::RefPtr<fml::TaskRunner> CreateNewThread(std::string name) {
 
   // Unmerge threads before the end of the test
   // TaskRunners are required to be unmerged before destruction.
-  while (raster_thread_merger->DecrementLease() != fml::RasterThreadStatus::kUnmergedNow)
-    ;
+  while (raster_thread_merger->DecrementLease() != fml::RasterThreadStatus::kUnmergedNow) {
+  }
 }
 
 - (int)alphaOfPoint:(CGPoint)point onView:(UIView*)view {
@@ -2669,8 +2669,8 @@ fml::RefPtr<fml::TaskRunner> CreateNewThread(std::string name) {
 
 - (void)testHasFirstResponderInViewHierarchySubtree_viewItselfBecomesFirstResponder {
   // For view to become the first responder, it must be a descendant of a UIWindow
-  UIWindow* window = [[UIWindow alloc] init];
-  UITextField* textField = [[UITextField alloc] init];
+  UIWindow* window = [[[UIWindow alloc] init] autorelease];
+  UITextField* textField = [[[UITextField alloc] init] autorelease];
   [window addSubview:textField];
 
   [textField becomeFirstResponder];
@@ -2683,10 +2683,10 @@ fml::RefPtr<fml::TaskRunner> CreateNewThread(std::string name) {
 
 - (void)testHasFirstResponderInViewHierarchySubtree_descendantViewBecomesFirstResponder {
   // For view to become the first responder, it must be a descendant of a UIWindow
-  UIWindow* window = [[UIWindow alloc] init];
-  UIView* view = [[UIView alloc] init];
-  UIView* childView = [[UIView alloc] init];
-  UITextField* textField = [[UITextField alloc] init];
+  UIWindow* window = [[[UIWindow alloc] init] autorelease];
+  UIView* view = [[[UIView alloc] init] autorelease];
+  UIView* childView = [[[UIView alloc] init] autorelease];
+  UITextField* textField = [[[UITextField alloc] init] autorelease];
   [window addSubview:view];
   [view addSubview:childView];
   [childView addSubview:textField];
@@ -2739,6 +2739,7 @@ fml::RefPtr<fml::TaskRunner> CreateNewThread(std::string name) {
   // The only retain left is our manual retain called inside the autorelease pool, meaning the
   // maskViews are dealloc'd.
   XCTAssertEqual(retainedView.retainCount, 1u);
+  [retainedView release];
 }
 
 - (void)testClipMaskViewIsReused {
@@ -2759,7 +2760,7 @@ fml::RefPtr<fml::TaskRunner> CreateNewThread(std::string name) {
       /*is_gpu_disabled_sync_switch=*/nil);
 
   FlutterPlatformViewsTestMockFlutterPlatformFactory* factory =
-      [[FlutterPlatformViewsTestMockFlutterPlatformFactory new] autorelease];
+      [[[FlutterPlatformViewsTestMockFlutterPlatformFactory alloc] init] autorelease];
   flutterPlatformViewsController->RegisterViewFactory(
       factory, @"MockFlutterPlatformView",
       FlutterPlatformViewGestureRecognizersBlockingPolicyEager);
@@ -2841,7 +2842,7 @@ fml::RefPtr<fml::TaskRunner> CreateNewThread(std::string name) {
       /*is_gpu_disabled_sync_switch=*/nil);
 
   FlutterPlatformViewsTestMockFlutterPlatformFactory* factory =
-      [[FlutterPlatformViewsTestMockFlutterPlatformFactory new] autorelease];
+      [[[FlutterPlatformViewsTestMockFlutterPlatformFactory alloc] init] autorelease];
   flutterPlatformViewsController->RegisterViewFactory(
       factory, @"MockFlutterPlatformView",
       FlutterPlatformViewGestureRecognizersBlockingPolicyEager);
@@ -2944,7 +2945,7 @@ fml::RefPtr<fml::TaskRunner> CreateNewThread(std::string name) {
   flutterPlatformViewsController->SetFlutterView(mockFlutterView);
 
   FlutterPlatformViewsTestMockFlutterPlatformFactory* factory =
-      [[FlutterPlatformViewsTestMockFlutterPlatformFactory new] autorelease];
+      [[[FlutterPlatformViewsTestMockFlutterPlatformFactory alloc] init] autorelease];
   flutterPlatformViewsController->RegisterViewFactory(
       factory, @"MockFlutterPlatformView",
       FlutterPlatformViewGestureRecognizersBlockingPolicyEager);
@@ -3049,7 +3050,7 @@ fml::RefPtr<fml::TaskRunner> CreateNewThread(std::string name) {
       /*is_gpu_disabled_sync_switch=*/nil);
 
   FlutterPlatformViewsTestMockFlutterPlatformFactory* factory =
-      [[FlutterPlatformViewsTestMockFlutterPlatformFactory new] autorelease];
+      [[[FlutterPlatformViewsTestMockFlutterPlatformFactory alloc] init] autorelease];
   flutterPlatformViewsController->RegisterViewFactory(
       factory, @"MockFlutterPlatformView",
       FlutterPlatformViewGestureRecognizersBlockingPolicyEager);

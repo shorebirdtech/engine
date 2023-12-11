@@ -7,7 +7,6 @@
 #include "flutter/fml/logging.h"
 #include "flutter/testing/display_list_testing.h"
 #include "third_party/skia/include/core/SkImageInfo.h"
-#include "third_party/skia/include/core/SkPicture.h"
 #include "third_party/skia/include/core/SkSerialProcs.h"
 #include "third_party/skia/include/core/SkSize.h"
 #include "third_party/skia/include/core/SkTextBlob.h"
@@ -159,6 +158,14 @@ void MockCanvas::DrawTextBlob(const sk_sp<SkTextBlob>& text,
       current_layer_, DrawTextData{text ? text->serialize(SkSerialProcs{})
                                         : SkData::MakeUninitialized(0),
                                    paint, SkPoint::Make(x, y)}});
+}
+
+void MockCanvas::DrawTextFrame(
+    const std::shared_ptr<impeller::TextFrame>& text_frame,
+    SkScalar x,
+    SkScalar y,
+    const DlPaint& paint) {
+  FML_DCHECK(false);
 }
 
 void MockCanvas::DrawRect(const SkRect& rect, const DlPaint& paint) {

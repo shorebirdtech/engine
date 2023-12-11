@@ -539,33 +539,7 @@ void hooksTests() async {
   });
 
   await test('PlatformDispatcher.view getter returns view with provided ID', () {
-    const int viewId = 123456789;
-    _callHook(
-      '_updateWindowMetrics',
-      21,
-      viewId, // window Id
-      1.0, // devicePixelRatio
-      800.0, // width
-      600.0, // height
-      50.0, // paddingTop
-      0.0, // paddingRight
-      40.0, // paddingBottom
-      0.0, // paddingLeft
-      0.0, // insetTop
-      0.0, // insetRight
-      0.0, // insetBottom
-      0.0, // insetLeft
-      0.0, // systemGestureInsetTop
-      0.0, // systemGestureInsetRight
-      0.0, // systemGestureInsetBottom
-      0.0, // systemGestureInsetLeft
-      22.0, // physicalTouchSlop
-      <double>[],  // display features bounds
-      <int>[],     // display features types
-      <int>[],     // display features states
-      0, // Display ID
-    );
-
+    const int viewId = 0;
     expectEquals(PlatformDispatcher.instance.view(id: viewId)?.viewId, viewId);
   });
 
@@ -1102,3 +1076,45 @@ external void _callHook(
   Object? arg20,
   Object? arg21,
 ]);
+
+Scene _createRedBoxScene(Size size) {
+  final SceneBuilder builder = SceneBuilder();
+  builder.pushOffset(0.0, 0.0);
+  final Paint paint = Paint()
+    ..color = Color.fromARGB(255, 255, 0, 0)
+    ..style = PaintingStyle.fill;
+  final PictureRecorder baseRecorder = PictureRecorder();
+  final Canvas canvas = Canvas(baseRecorder);
+  canvas.drawRect(Rect.fromLTRB(0.0, 0.0, size.width, size.height), paint);
+  final Picture picture = baseRecorder.endRecording();
+  builder.addPicture(Offset(0.0, 0.0), picture);
+  builder.pop();
+  return builder.build();
+}
+
+@pragma('vm:entry-point')
+void incorrectImmediateRender() {
+  PlatformDispatcher.instance.views.first.render(_createRedBoxScene(Size(2, 2)));
+  _finish();
+  // Don't schedule a frame here. This test only checks if the
+  // [FlutterView.render] call is propagated to PlatformConfiguration.render
+  // and thus doesn't need anything from `Animator` or `Engine`, which,
+  // besides, are not even created in the native side at all.
+}
+
+@pragma('vm:entry-point')
+void incorrectDoubleRender() {
+  PlatformDispatcher.instance.onBeginFrame = (Duration value) {
+    PlatformDispatcher.instance.views.first.render(_createRedBoxScene(Size(2, 2)));
+    PlatformDispatcher.instance.views.first.render(_createRedBoxScene(Size(3, 3)));
+  };
+  PlatformDispatcher.instance.onDrawFrame = () {
+    PlatformDispatcher.instance.views.first.render(_createRedBoxScene(Size(4, 4)));
+    PlatformDispatcher.instance.views.first.render(_createRedBoxScene(Size(5, 5)));
+  };
+  _finish();
+  // Don't schedule a frame here. This test only checks if the
+  // [FlutterView.render] call is propagated to PlatformConfiguration.render
+  // and thus doesn't need anything from `Animator` or `Engine`, which,
+  // besides, are not even created in the native side at all.
+}

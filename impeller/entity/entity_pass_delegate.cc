@@ -19,9 +19,6 @@ class DefaultEntityPassDelegate final : public EntityPassDelegate {
   ~DefaultEntityPassDelegate() override = default;
 
   // |EntityPassDelegate|
-  std::optional<Rect> GetCoverageRect() override { return std::nullopt; }
-
-  // |EntityPassDelegate|
   bool CanElide() override { return false; }
 
   // |EntityPassDelegate|
@@ -35,6 +32,13 @@ class DefaultEntityPassDelegate final : public EntityPassDelegate {
       const Matrix& effect_transform) override {
     // Not possible since this pass always collapses into its parent.
     FML_UNREACHABLE();
+  }
+
+  // |EntityPassDelgate|
+  std::shared_ptr<FilterContents> WithImageFilter(
+      const FilterInput::Variant& input,
+      const Matrix& effect_transform) const override {
+    return nullptr;
   }
 
  private:

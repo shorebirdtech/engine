@@ -123,6 +123,15 @@ std::optional<Color> Contents::AsBackgroundColor(const Entity& entity,
   return {};
 }
 
+const FilterContents* Contents::AsFilter() const {
+  return nullptr;
+}
+
+bool Contents::ApplyColorFilter(
+    const Contents::ColorFilterProc& color_filter_proc) {
+  return false;
+}
+
 bool Contents::ShouldRender(const Entity& entity,
                             const std::optional<Rect>& stencil_coverage) const {
   if (!stencil_coverage.has_value()) {

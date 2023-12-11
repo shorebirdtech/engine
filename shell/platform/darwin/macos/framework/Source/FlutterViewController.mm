@@ -164,8 +164,6 @@ NSData* currentKeyboardLayoutData() {
 
 - (void)setBackgroundColor:(NSColor*)color;
 
-- (BOOL)performKeyEquivalent:(NSEvent*)event;
-
 @end
 
 /**
@@ -242,37 +240,6 @@ NSData* currentKeyboardLayoutData() {
 
 @end
 
-#pragma mark - NSEvent (KeyEquivalentMarker) protocol
-
-@interface NSEvent (KeyEquivalentMarker)
-
-// Internally marks that the event was received through performKeyEquivalent:.
-// When text editing is active, keyboard events that have modifier keys pressed
-// are received through performKeyEquivalent: instead of keyDown:. If such event
-// is passed to TextInputContext but doesn't result in a text editing action it
-// needs to be forwarded by FlutterKeyboardManager to the next responder.
-- (void)markAsKeyEquivalent;
-
-// Returns YES if the event is marked as a key equivalent.
-- (BOOL)isKeyEquivalent;
-
-@end
-
-@implementation NSEvent (KeyEquivalentMarker)
-
-// This field doesn't need a value because only its address is used as a unique identifier.
-static char markerKey;
-
-- (void)markAsKeyEquivalent {
-  objc_setAssociatedObject(self, &markerKey, @true, OBJC_ASSOCIATION_RETAIN);
-}
-
-- (BOOL)isKeyEquivalent {
-  return [objc_getAssociatedObject(self, &markerKey) boolValue] == YES;
-}
-
-@end
-
 #pragma mark - Private dependant functions
 
 namespace {
@@ -312,19 +279,15 @@ void OnKeyboardLayoutChanged(CFNotificationCenterRef center,
 }
 
 - (BOOL)performKeyEquivalent:(NSEvent*)event {
-  if ([_controller isDispatchingKeyEvent:event]) {
-    // When NSWindow is nextResponder, keyboard manager will send to it
-    // unhandled events (through [NSWindow keyDown:]). If event has both
-    // control and cmd modifiers set (i.e. cmd+control+space - emoji picker)
-    // NSWindow will then send this event as performKeyEquivalent: to first
-    // responder, which might be FlutterTextInputPlugin. If that's the case, the
-    // plugin must not handle the event, otherwise the emoji picker would not
-    // work (due to first responder returning YES from performKeyEquivalent:)
-    // and there would be an infinite loop, because FlutterViewController will
-    // send the event back to [keyboardManager handleEvent:].
-    return NO;
+  // Do not intercept the event if flutterView is not first responder, otherwise this would
+  // interfere with TextInputPlugin, which also handles key equivalents.
+  //
+  // Also do not intercept the event if key equivalent is a product of an event being
+  // redispatched by the TextInputPlugin, in which case it needs to bubble up so that menus
+  // can handle key equivalents.
+  if (self.window.firstResponder != _flutterView || [_controller isDispatchingKeyEvent:event]) {
+    return [super performKeyEquivalent:event];
   }
-  [event markAsKeyEquivalent];
   [_flutterView keyDown:event];
   return YES;
 }
@@ -400,7 +363,7 @@ static void CommonInit(FlutterViewController* controller, FlutterEngine* engine)
             @"In unit tests, this is likely because either the FlutterViewController or "
             @"the FlutterEngine is mocked. Please subclass these classes instead.",
             controller.engine, controller.viewId);
-  controller->_mouseTrackingMode = FlutterMouseTrackingModeInKeyWindow;
+  controller->_mouseTrackingMode = kFlutterMouseTrackingModeInKeyWindow;
   controller->_textInputPlugin = [[FlutterTextInputPlugin alloc] initWithViewController:controller];
   [controller initializeKeyboard];
   [controller notifySemanticsEnabledChanged];
@@ -517,7 +480,7 @@ static void CommonInit(FlutterViewController* controller, FlutterEngine* engine)
 }
 
 - (FlutterViewId)viewId {
-  NSAssert([self attached], @"This view controller is not attched.");
+  NSAssert([self attached], @"This view controller is not attached.");
   return _viewId;
 }
 
@@ -642,17 +605,17 @@ static void CommonInit(FlutterViewController* controller, FlutterEngine* engine)
     // the view is actually loaded.
     return;
   }
-  if (_mouseTrackingMode != FlutterMouseTrackingModeNone && self.flutterView) {
+  if (_mouseTrackingMode != kFlutterMouseTrackingModeNone && self.flutterView) {
     NSTrackingAreaOptions options = NSTrackingMouseEnteredAndExited | NSTrackingMouseMoved |
                                     NSTrackingInVisibleRect | NSTrackingEnabledDuringMouseDrag;
     switch (_mouseTrackingMode) {
-      case FlutterMouseTrackingModeInKeyWindow:
+      case kFlutterMouseTrackingModeInKeyWindow:
         options |= NSTrackingActiveInKeyWindow;
         break;
-      case FlutterMouseTrackingModeInActiveApp:
+      case kFlutterMouseTrackingModeInActiveApp:
         options |= NSTrackingActiveInActiveApp;
         break;
-      case FlutterMouseTrackingModeAlways:
+      case kFlutterMouseTrackingModeAlways:
         options |= NSTrackingActiveAlways;
         break;
       default:
@@ -903,6 +866,10 @@ static void CommonInit(FlutterViewController* controller, FlutterEngine* engine)
   return [_engine registrarForPlugin:pluginName];
 }
 
+- (NSObject*)valuePublishedByPlugin:(NSString*)pluginKey {
+  return [_engine valuePublishedByPlugin:pluginKey];
+}
+
 #pragma mark - FlutterKeyboardViewDelegate
 
 - (void)sendKeyEvent:(const FlutterKeyEvent&)event
@@ -953,6 +920,10 @@ static void CommonInit(FlutterViewController* controller, FlutterEngine* engine)
     return LayoutClue{resultChar, isDeadKey};
   }
   return LayoutClue{0, false};
+}
+
+- (nonnull NSDictionary*)getPressedState {
+  return [_keyboardManager getPressedState];
 }
 
 #pragma mark - NSResponder
