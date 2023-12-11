@@ -20,7 +20,7 @@ vars = {
   'ocmock_git': 'https://github.com/erikdoe/ocmock.git',
   'skia_revision': '795ed944ff5bde5916d193824589d3bacfa61a7d',
 
-  'dart_sdk_revision': '7beebdd410282beccfd3a75ae13fd0d288b14a5e',
+  'dart_sdk_revision': '3f9563e55ff25184b76ab20f4438092a757a4faf',
   'dart_sdk_git': 'git@github.com:shorebirdtech/dart-sdk.git',
   'updater_git': 'https://github.com/shorebirdtech/updater.git',
   'updater_rev': 'd785568094c176d956ccf7ae918bf8d64c0d09b7',
