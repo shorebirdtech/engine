@@ -4,7 +4,7 @@
 
 import 'package:ui/ui.dart' as ui;
 
-import '../../engine.dart' show platformViewManager;
+import '../../engine.dart' show PlatformViewManager;
 import '../configuration.dart';
 import '../dom.dart';
 import '../html/path_to_svg_clip.dart';
@@ -16,6 +16,7 @@ import '../window.dart';
 import 'canvas.dart';
 import 'embedded_views_diff.dart';
 import 'path.dart';
+import 'picture.dart';
 import 'picture_recorder.dart';
 import 'renderer.dart';
 import 'surface.dart';
@@ -135,11 +136,10 @@ class HtmlViewEmbedder {
     }
     // We need an overlay for each visible platform view. Invisible platform
     // views will be grouped with (at most) one visible platform view later.
-    final bool needNewOverlay = platformViewManager.isVisible(viewId);
+    final bool needNewOverlay = PlatformViewManager.instance.isVisible(viewId);
     if (needNewOverlay && hasAvailableOverlay) {
       final CkPictureRecorder pictureRecorder = CkPictureRecorder();
       pictureRecorder.beginRecording(ui.Offset.zero & _frameSize);
-      pictureRecorder.recordingCanvas!.clear(const ui.Color(0x00000000));
       _context.pictureRecordersCreatedDuringPreroll.add(pictureRecorder);
     }
 
@@ -164,11 +164,11 @@ class HtmlViewEmbedder {
     final int overlayIndex = _context.visibleViewCount;
     _compositionOrder.add(viewId);
     // Keep track of the number of visible platform views.
-    if (platformViewManager.isVisible(viewId)) {
+    if (PlatformViewManager.instance.isVisible(viewId)) {
       _context.visibleViewCount++;
     }
     // We need a new overlay if this is a visible view.
-    final bool needNewOverlay = platformViewManager.isVisible(viewId);
+    final bool needNewOverlay = PlatformViewManager.instance.isVisible(viewId);
     CkPictureRecorder? recorderToUseForRendering;
     if (needNewOverlay) {
       if (overlayIndex < _context.pictureRecordersCreatedDuringPreroll.length) {
@@ -422,9 +422,10 @@ class HtmlViewEmbedder {
       if (_overlays[viewId] != null) {
         final SurfaceFrame frame = _overlays[viewId]!.acquireFrame(_frameSize);
         final CkCanvas canvas = frame.skiaCanvas;
-        canvas.drawPicture(
-          _context.pictureRecorders[pictureRecorderIndex].endRecording(),
-        );
+        final CkPicture ckPicture =
+            _context.pictureRecorders[pictureRecorderIndex].endRecording();
+        canvas.clear(const ui.Color(0x00000000));
+        canvas.drawPicture(ckPicture);
         pictureRecorderIndex++;
         frame.submit();
       }
@@ -466,7 +467,7 @@ class HtmlViewEmbedder {
       for (final int viewId in diffResult.viewsToAdd) {
         bool isViewInvalid = false;
         assert(() {
-          isViewInvalid = !platformViewManager.knowsViewId(viewId);
+          isViewInvalid = !PlatformViewManager.instance.knowsViewId(viewId);
           if (isViewInvalid) {
             debugInvalidViewIds ??= <int>[];
             debugInvalidViewIds!.add(viewId);
@@ -519,7 +520,7 @@ class HtmlViewEmbedder {
 
         bool isViewInvalid = false;
         assert(() {
-          isViewInvalid = !platformViewManager.knowsViewId(viewId);
+          isViewInvalid = !PlatformViewManager.instance.knowsViewId(viewId);
           if (isViewInvalid) {
             debugInvalidViewIds ??= <int>[];
             debugInvalidViewIds!.add(viewId);
@@ -654,7 +655,7 @@ class HtmlViewEmbedder {
 
     for (int i = 0; i < views.length; i++) {
       final int view = views[i];
-      if (platformViewManager.isInvisible(view)) {
+      if (PlatformViewManager.instance.isInvisible(view)) {
         // We add as many invisible views as we find to the current group.
         currentGroup.add(view);
       } else {
@@ -719,7 +720,7 @@ class HtmlViewEmbedder {
 
   /// Clears the state of this view embedder. Used in tests.
   void debugClear() {
-    final Set<int> allViews = platformViewManager.debugClear();
+    final Set<int> allViews = PlatformViewManager.instance.debugClear();
     disposeViews(allViews);
     _context = EmbedderFrameContext();
     _currentCompositionParams.clear();

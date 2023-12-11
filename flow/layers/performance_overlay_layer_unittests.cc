@@ -104,7 +104,7 @@ static void TestPerformanceOverlayLayerGold(int refresh_rate) {
   // platforms.
 #if !defined(FML_OS_LINUX)
   GTEST_SKIP() << "Skipping golden tests on non-Linux OSes";
-#endif  // FML_OS_LINUX
+#else
   const bool golden_data_matches = golden_data->equals(snapshot_data.get());
   if (!golden_data_matches) {
     SkFILEWStream wstream(new_golden_file_path.c_str());
@@ -126,6 +126,7 @@ static void TestPerformanceOverlayLayerGold(int refresh_rate) {
         << "See also the base64 encoded " << new_golden_file_path << ":\n"
         << b64_char;
   }
+#endif  // FML_OS_LINUX
 }
 
 }  // namespace
@@ -180,7 +181,7 @@ TEST_F(PerformanceOverlayLayerTest, SimpleRasterizerStatistics) {
       paint_context().raster_time, "Raster", "");
   auto overlay_text_data = overlay_text->serialize(SkSerialProcs{});
   // Historically SK_ColorGRAY (== 0xFF888888) was used here
-  DlPaint text_paint(0xFF888888);
+  DlPaint text_paint(DlColor(0xFF888888));
   SkPoint text_position = SkPoint::Make(16.0f, 22.0f);
 
   // TODO(https://github.com/flutter/flutter/issues/82202): Remove once the

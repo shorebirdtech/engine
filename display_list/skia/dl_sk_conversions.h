@@ -10,8 +10,16 @@
 
 namespace flutter {
 
+SkPaint ToSk(const DlPaint& paint, bool force_stroke = false);
+
 inline SkBlendMode ToSk(DlBlendMode mode) {
   return static_cast<SkBlendMode>(mode);
+}
+
+inline SkColor ToSk(DlColor color) {
+  // This is safe because both SkColor and DlColor are backed by ARGB uint32_t.
+  // See dl_sk_conversions_unittests.cc.
+  return reinterpret_cast<SkColor&>(color);
 }
 
 inline SkPaint::Style ToSk(DlDrawStyle style) {

@@ -5,6 +5,7 @@
 #include "impeller/renderer/backend/vulkan/compute_pass_vk.h"
 
 #include "flutter/fml/trace_event.h"
+#include "impeller/renderer/backend/vulkan/command_buffer_vk.h"
 #include "impeller/renderer/backend/vulkan/compute_pipeline_vk.h"
 #include "impeller/renderer/backend/vulkan/sampler_vk.h"
 #include "impeller/renderer/backend/vulkan/texture_vk.h"
@@ -12,8 +13,9 @@
 namespace impeller {
 
 ComputePassVK::ComputePassVK(std::weak_ptr<const Context> context,
-                             std::weak_ptr<CommandEncoderVK> encoder)
-    : ComputePass(std::move(context)), encoder_(std::move(encoder)) {
+                             std::weak_ptr<CommandBufferVK> command_buffer)
+    : ComputePass(std::move(context)),
+      command_buffer_(std::move(command_buffer)) {
   is_valid_ = true;
 }
 
@@ -32,17 +34,17 @@ void ComputePassVK::OnSetLabel(const std::string& label) {
 
 static bool UpdateBindingLayouts(const Bindings& bindings,
                                  const vk::CommandBuffer& buffer) {
-  LayoutTransition transition;
-  transition.cmd_buffer = buffer;
-  transition.src_access = vk::AccessFlagBits::eTransferWrite;
-  transition.src_stage = vk::PipelineStageFlagBits::eTransfer;
-  transition.dst_access = vk::AccessFlagBits::eShaderRead;
-  transition.dst_stage = vk::PipelineStageFlagBits::eComputeShader;
+  BarrierVK barrier;
+  barrier.cmd_buffer = buffer;
+  barrier.src_access = vk::AccessFlagBits::eTransferWrite;
+  barrier.src_stage = vk::PipelineStageFlagBits::eTransfer;
+  barrier.dst_access = vk::AccessFlagBits::eShaderRead;
+  barrier.dst_stage = vk::PipelineStageFlagBits::eComputeShader;
 
-  transition.new_layout = vk::ImageLayout::eShaderReadOnlyOptimal;
+  barrier.new_layout = vk::ImageLayout::eShaderReadOnlyOptimal;
 
-  for (const auto& [_, texture] : bindings.textures) {
-    if (!TextureVK::Cast(*texture.resource).SetLayout(transition)) {
+  for (const auto& [_, data] : bindings.sampled_images) {
+    if (!TextureVK::Cast(*data.texture.resource).SetLayout(barrier)) {
       return false;
     }
   }
@@ -67,10 +69,11 @@ static bool UpdateBindingLayouts(const std::vector<ComputeCommand>& commands,
 static bool AllocateAndBindDescriptorSets(const ContextVK& context,
                                           const ComputeCommand& command,
                                           CommandEncoderVK& encoder,
-                                          const ComputePipelineVK& pipeline) {
+                                          const ComputePipelineVK& pipeline,
+                                          size_t command_count) {
   auto desc_set = pipeline.GetDescriptor().GetDescriptorSetLayouts();
-  auto vk_desc_set =
-      encoder.AllocateDescriptorSet(pipeline.GetDescriptorSetLayout());
+  auto vk_desc_set = encoder.AllocateDescriptorSet(
+      pipeline.GetDescriptorSetLayout(), command_count);
   if (!vk_desc_set) {
     return false;
   }
@@ -80,27 +83,22 @@ static bool AllocateAndBindDescriptorSets(const ContextVK& context,
   std::unordered_map<uint32_t, vk::DescriptorBufferInfo> buffers;
   std::unordered_map<uint32_t, vk::DescriptorImageInfo> images;
   std::vector<vk::WriteDescriptorSet> writes;
-
   auto bind_images = [&encoder,     //
                       &images,      //
                       &writes,      //
                       &vk_desc_set  //
   ](const Bindings& bindings) -> bool {
-    for (const auto& [index, sampler_handle] : bindings.samplers) {
-      if (bindings.textures.find(index) == bindings.textures.end()) {
-        return false;
-      }
-
-      auto texture = bindings.textures.at(index).resource;
+    for (const auto& [index, data] : bindings.sampled_images) {
+      auto texture = data.texture.resource;
       const auto& texture_vk = TextureVK::Cast(*texture);
-      const SamplerVK& sampler = SamplerVK::Cast(*sampler_handle.resource);
+      const SamplerVK& sampler = SamplerVK::Cast(*data.sampler.resource);
 
       if (!encoder.Track(texture) ||
           !encoder.Track(sampler.GetSharedSampler())) {
         return false;
       }
 
-      const SampledImageSlot& slot = bindings.sampled_images.at(index);
+      const SampledImageSlot& slot = data.slot;
 
       vk::DescriptorImageInfo image_info;
       image_info.imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
@@ -127,8 +125,8 @@ static bool AllocateAndBindDescriptorSets(const ContextVK& context,
                        &desc_set,    //
                        &vk_desc_set  //
   ](const Bindings& bindings) -> bool {
-    for (const auto& [buffer_index, view] : bindings.buffers) {
-      const auto& buffer_view = view.resource.buffer;
+    for (const auto& [buffer_index, data] : bindings.buffers) {
+      const auto& buffer_view = data.view.resource.buffer;
 
       auto device_buffer = buffer_view->GetDeviceBuffer(allocator);
       if (!device_buffer) {
@@ -145,14 +143,14 @@ static bool AllocateAndBindDescriptorSets(const ContextVK& context,
         return false;
       }
 
-      uint32_t offset = view.resource.range.offset;
+      uint32_t offset = data.view.resource.range.offset;
 
       vk::DescriptorBufferInfo buffer_info;
       buffer_info.buffer = buffer;
       buffer_info.offset = offset;
-      buffer_info.range = view.resource.range.length;
+      buffer_info.range = data.view.resource.range.length;
 
-      const ShaderUniformSlot& uniform = bindings.uniforms.at(buffer_index);
+      const ShaderUniformSlot& uniform = data.slot;
       auto layout_it = std::find_if(desc_set.begin(), desc_set.end(),
                                     [&uniform](DescriptorSetLayout& layout) {
                                       return layout.binding == uniform.binding;
@@ -203,9 +201,13 @@ bool ComputePassVK::OnEncodeCommands(const Context& context,
   FML_DCHECK(!grid_size.IsEmpty() && !thread_group_size.IsEmpty());
 
   const auto& vk_context = ContextVK::Cast(context);
-  auto encoder = encoder_.lock();
+  auto command_buffer = command_buffer_.lock();
+  if (!command_buffer) {
+    VALIDATION_LOG << "Command buffer died before commands could be encoded.";
+    return false;
+  }
+  auto encoder = command_buffer->GetEncoder();
   if (!encoder) {
-    VALIDATION_LOG << "Command encoder died before commands could be encoded.";
     return false;
   }
 
@@ -235,10 +237,11 @@ bool ComputePassVK::OnEncodeCommands(const Context& context,
 
       cmd_buffer.bindPipeline(vk::PipelineBindPoint::eCompute,
                               pipeline_vk.GetPipeline());
-      if (!AllocateAndBindDescriptorSets(vk_context,  //
-                                         command,     //
-                                         *encoder,    //
-                                         pipeline_vk  //
+      if (!AllocateAndBindDescriptorSets(vk_context,       //
+                                         command,          //
+                                         *encoder,         //
+                                         pipeline_vk,      //
+                                         commands_.size()  //
                                          )) {
         return false;
       }

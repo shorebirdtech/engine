@@ -23,11 +23,16 @@ static constexpr int32_t kDefaultPointerDeviceId = 0;
 
 class MockFlutterWindow : public FlutterWindow {
  public:
-  MockFlutterWindow() : FlutterWindow(800, 600) {
+  MockFlutterWindow(bool reset_view_on_exit = true)
+      : FlutterWindow(800, 600), reset_view_on_exit_(reset_view_on_exit) {
     ON_CALL(*this, GetDpiScale())
         .WillByDefault(Return(this->FlutterWindow::GetDpiScale()));
   }
-  virtual ~MockFlutterWindow() {}
+  virtual ~MockFlutterWindow() {
+    if (reset_view_on_exit_) {
+      SetView(nullptr);
+    }
+  }
 
   // Wrapper for GetCurrentDPI() which is a protected method.
   UINT GetDpi() { return GetCurrentDPI(); }
@@ -39,28 +44,40 @@ class MockFlutterWindow : public FlutterWindow {
     return HandleMessage(message, wparam, lparam);
   }
 
-  MOCK_METHOD1(OnDpiScale, void(unsigned int));
-  MOCK_METHOD2(OnResize, void(unsigned int, unsigned int));
-  MOCK_METHOD4(OnPointerMove,
-               void(double, double, FlutterPointerDeviceKind, int32_t));
-  MOCK_METHOD5(OnPointerDown,
-               void(double, double, FlutterPointerDeviceKind, int32_t, UINT));
-  MOCK_METHOD5(OnPointerUp,
-               void(double, double, FlutterPointerDeviceKind, int32_t, UINT));
-  MOCK_METHOD4(OnPointerLeave,
-               void(double, double, FlutterPointerDeviceKind, int32_t));
-  MOCK_METHOD0(OnSetCursor, void());
-  MOCK_METHOD0(GetScrollOffsetMultiplier, float());
-  MOCK_METHOD0(GetHighContrastEnabled, bool());
-  MOCK_METHOD0(GetDpiScale, float());
-  MOCK_METHOD0(IsVisible, bool());
-  MOCK_METHOD1(UpdateCursorRect, void(const Rect&));
-  MOCK_METHOD0(OnResetImeComposing, void());
-  MOCK_METHOD3(Win32DispatchMessage, UINT(UINT, WPARAM, LPARAM));
-  MOCK_METHOD4(Win32PeekMessage, BOOL(LPMSG, UINT, UINT, UINT));
-  MOCK_METHOD1(Win32MapVkToChar, uint32_t(uint32_t));
-  MOCK_METHOD0(GetPlatformWindow, HWND());
-  MOCK_METHOD0(GetAxFragmentRootDelegate, ui::AXFragmentRootDelegateWin*());
+  MOCK_METHOD(void, OnDpiScale, (unsigned int), (override));
+  MOCK_METHOD(void, OnResize, (unsigned int, unsigned int), (override));
+  MOCK_METHOD(void,
+              OnPointerMove,
+              (double, double, FlutterPointerDeviceKind, int32_t, int),
+              (override));
+  MOCK_METHOD(void,
+              OnPointerDown,
+              (double, double, FlutterPointerDeviceKind, int32_t, UINT),
+              (override));
+  MOCK_METHOD(void,
+              OnPointerUp,
+              (double, double, FlutterPointerDeviceKind, int32_t, UINT),
+              (override));
+  MOCK_METHOD(void,
+              OnPointerLeave,
+              (double, double, FlutterPointerDeviceKind, int32_t),
+              (override));
+  MOCK_METHOD(void, OnSetCursor, (), (override));
+  MOCK_METHOD(float, GetScrollOffsetMultiplier, (), (override));
+  MOCK_METHOD(bool, GetHighContrastEnabled, (), (override));
+  MOCK_METHOD(float, GetDpiScale, (), (override));
+  MOCK_METHOD(bool, IsVisible, (), (override));
+  MOCK_METHOD(void, UpdateCursorRect, (const Rect&), (override));
+  MOCK_METHOD(void, OnResetImeComposing, (), (override));
+  MOCK_METHOD(UINT, Win32DispatchMessage, (UINT, WPARAM, LPARAM), (override));
+  MOCK_METHOD(BOOL, Win32PeekMessage, (LPMSG, UINT, UINT, UINT), (override));
+  MOCK_METHOD(uint32_t, Win32MapVkToChar, (uint32_t), (override));
+  MOCK_METHOD(HWND, GetPlatformWindow, (), (override));
+  MOCK_METHOD(ui::AXFragmentRootDelegateWin*,
+              GetAxFragmentRootDelegate,
+              (),
+              (override));
+  MOCK_METHOD(void, OnWindowStateEvent, (WindowStateEvent), (override));
 
  protected:
   // |KeyboardManager::WindowDelegate|
@@ -72,6 +89,7 @@ class MockFlutterWindow : public FlutterWindow {
   }
 
  private:
+  bool reset_view_on_exit_;
   FML_DISALLOW_COPY_AND_ASSIGN(MockFlutterWindow);
 };
 
@@ -81,8 +99,10 @@ class MockFlutterWindowsView : public FlutterWindowsView {
       : FlutterWindowsView(std::move(window_binding)) {}
   ~MockFlutterWindowsView() {}
 
-  MOCK_METHOD2(NotifyWinEventWrapper,
-               void(ui::AXPlatformNodeWin*, ax::mojom::Event));
+  MOCK_METHOD(void,
+              NotifyWinEventWrapper,
+              (ui::AXPlatformNodeWin*, ax::mojom::Event),
+              (override));
 
  private:
   FML_DISALLOW_COPY_AND_ASSIGN(MockFlutterWindowsView);
@@ -229,6 +249,10 @@ TEST(FlutterWindowTest, OnPointerStarSendsDeviceType) {
                           kDefaultPointerDeviceId, WM_LBUTTONDOWN);
   win32window.OnPointerLeave(10.0, 10.0, kFlutterPointerDeviceKindStylus,
                              kDefaultPointerDeviceId);
+
+  // Destruction of win32window sends a HIDE update. In situ, the window is
+  // owned by the delegate, and so is destructed first. Not so here.
+  win32window.SetView(nullptr);
 }
 
 // Tests that calls to OnScroll in turn calls GetScrollOffsetMultiplier
@@ -272,6 +296,15 @@ TEST(FlutterWindowTest, OnThemeChange) {
   win32window.InjectWindowMessage(WM_THEMECHANGED, 0, 0);
 }
 
+// The window should return no root accessibility node if
+// it isn't attached to a view.
+// Regression test for https://github.com/flutter/flutter/issues/129791
+TEST(FlutterWindowTest, AccessibilityNodeWithoutView) {
+  MockFlutterWindow win32window;
+
+  EXPECT_EQ(win32window.GetNativeViewAccessible(), nullptr);
+}
+
 TEST(FlutterWindowTest, InitialAccessibilityFeatures) {
   MockFlutterWindow win32window;
   MockWindowBindingHandlerDelegate delegate;
@@ -313,6 +346,101 @@ TEST(FlutterWindowTest, AlertNode) {
   alert->get_accRole(self, &role);
   EXPECT_EQ(role.vt, VT_I4);
   EXPECT_EQ(role.lVal, ROLE_SYSTEM_ALERT);
+}
+
+TEST(FlutterWindowTest, LifecycleFocusMessages) {
+  MockFlutterWindow win32window;
+  ON_CALL(win32window, GetPlatformWindow).WillByDefault([]() {
+    return reinterpret_cast<HWND>(1);
+  });
+  MockWindowBindingHandlerDelegate delegate;
+  win32window.SetView(&delegate);
+
+  WindowStateEvent last_event;
+  ON_CALL(delegate, OnWindowStateEvent)
+      .WillByDefault([&last_event](HWND hwnd, WindowStateEvent event) {
+        last_event = event;
+      });
+  ON_CALL(win32window, OnWindowStateEvent)
+      .WillByDefault([&](WindowStateEvent event) {
+        win32window.FlutterWindow::OnWindowStateEvent(event);
+      });
+
+  win32window.InjectWindowMessage(WM_SIZE, 0, 0);
+  EXPECT_EQ(last_event, WindowStateEvent::kHide);
+
+  win32window.InjectWindowMessage(WM_SIZE, 0, MAKEWORD(1, 1));
+  EXPECT_EQ(last_event, WindowStateEvent::kShow);
+
+  win32window.InjectWindowMessage(WM_SETFOCUS, 0, 0);
+  EXPECT_EQ(last_event, WindowStateEvent::kFocus);
+
+  win32window.InjectWindowMessage(WM_KILLFOCUS, 0, 0);
+  EXPECT_EQ(last_event, WindowStateEvent::kUnfocus);
+}
+
+TEST(FlutterWindowTest, CachedLifecycleMessage) {
+  MockFlutterWindow win32window;
+  ON_CALL(win32window, GetPlatformWindow).WillByDefault([]() {
+    return reinterpret_cast<HWND>(1);
+  });
+  ON_CALL(win32window, OnWindowStateEvent)
+      .WillByDefault([&](WindowStateEvent event) {
+        win32window.FlutterWindow::OnWindowStateEvent(event);
+      });
+
+  // Restore
+  win32window.InjectWindowMessage(WM_SIZE, 0, MAKEWORD(1, 1));
+
+  // Focus
+  win32window.InjectWindowMessage(WM_SETFOCUS, 0, 0);
+
+  MockWindowBindingHandlerDelegate delegate;
+  bool focused = false;
+  bool restored = false;
+  ON_CALL(delegate, OnWindowStateEvent)
+      .WillByDefault([&](HWND hwnd, WindowStateEvent event) {
+        if (event == WindowStateEvent::kFocus) {
+          focused = true;
+        } else if (event == WindowStateEvent::kShow) {
+          restored = true;
+        }
+      });
+
+  win32window.SetView(&delegate);
+  EXPECT_TRUE(focused);
+  EXPECT_TRUE(restored);
+}
+
+TEST(FlutterWindowTest, PosthumousWindowMessage) {
+  MockWindowBindingHandlerDelegate delegate;
+  int msg_count = 0;
+  HWND hwnd;
+  ON_CALL(delegate, OnWindowStateEvent)
+      .WillByDefault([&](HWND hwnd, WindowStateEvent event) { msg_count++; });
+
+  {
+    MockFlutterWindow win32window(false);
+    ON_CALL(win32window, GetPlatformWindow).WillByDefault([&]() {
+      return win32window.FlutterWindow::GetPlatformWindow();
+    });
+    ON_CALL(win32window, OnWindowStateEvent)
+        .WillByDefault([&](WindowStateEvent event) {
+          win32window.FlutterWindow::OnWindowStateEvent(event);
+        });
+    win32window.SetView(&delegate);
+    win32window.InitializeChild("Title", 1, 1);
+    hwnd = win32window.GetPlatformWindow();
+    SendMessage(hwnd, WM_SIZE, 0, MAKEWORD(1, 1));
+    SendMessage(hwnd, WM_SETFOCUS, 0, 0);
+
+    // By setting this to zero before exiting the scope that contains
+    // win32window, and then checking its value afterwards, enforce that the
+    // window receive and process messages from its destructor without
+    // accessing out-of-bounds memory.
+    msg_count = 0;
+  }
+  EXPECT_GE(msg_count, 1);
 }
 
 }  // namespace testing

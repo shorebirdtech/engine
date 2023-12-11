@@ -99,7 +99,6 @@ class Color {
   /// For example, to get a fully opaque orange, you would use `const
   /// Color(0xFFFF9000)` (`FF` for the alpha, `FF` for the red, `90` for the
   /// green, and `00` for the blue).
-  @pragma('vm:entry-point')
   const Color(int value) : value = value & 0xFFFFFFFF;
 
   /// Construct a color from the lower 8 bits of four integers.
@@ -543,6 +542,12 @@ enum BlendMode {
   /// pixel in that image was darker.
   ///
   /// This corresponds to the "Source plus Destination" Porter-Duff operator.
+  ///
+  /// This is the right blend mode for cross-fading between two images. Consider
+  /// two images A and B, and an interpolation time variable _t_ (from 0.0 to
+  /// 1.0). To cross fade between them, A should be drawn with opacity 1.0 - _t_
+  /// into a new layer using [BlendMode.srcOver], and B should be drawn on top
+  /// of it, at opacity _t_, into the same layer, using [BlendMode.plus].
   ///
   /// ![](https://flutter.github.io/assets-for-api-docs/assets/dart-ui/blend_mode_plus.png)
   plus,
@@ -1481,22 +1486,19 @@ class Paint {
     _data.setInt32(_kDitherOffset, value ? 1 : 0, _kFakeHostEndian);
   }
 
-  /// Whether to dither the output when drawing images.
+  /// Whether to dither the output when drawing some elements such as gradients.
   ///
-  /// If false, the default value, dithering will be enabled when the input
-  /// color depth is higher than the output color depth. For example,
-  /// drawing an RGB8 image onto an RGB565 canvas.
-  ///
-  /// This value also controls dithering of [shader]s, which can make
-  /// gradients appear smoother.
-  ///
-  /// Whether or not dithering affects the output is implementation defined.
-  /// Some implementations may choose to ignore this completely, if they're
-  /// unable to control dithering.
-  ///
-  /// To ensure that dithering is consistently enabled for your entire
-  /// application, set this to true before invoking any drawing related code.
-  static bool enableDithering = false;
+  /// It is not expected that this flag will be used in the future; please leave
+  /// feedback in <https://github.com/flutter/flutter/issues/112498> if there is
+  /// a use case for this flag to remain long term.
+  @Deprecated(
+    'Dithering is now enabled by default on some elements (such as gradients) '
+    'and further support for dithering is expected to be handled by custom '
+    'shaders, so this flag is being removed: '
+    'https://github.com/flutter/flutter/issues/112498.'
+    'This feature was deprecated after 3.14.0-0.1.pre.'
+  )
+  static bool enableDithering = true;
 
   @override
   String toString() {
@@ -2095,7 +2097,6 @@ abstract class Codec {
   void dispose();
 }
 
-@pragma('vm:entry-point')
 base class _NativeCodec extends NativeFieldWrapperClass1 implements Codec {
   //
   // This class is created by the engine, and should not be instantiated
@@ -2103,7 +2104,6 @@ base class _NativeCodec extends NativeFieldWrapperClass1 implements Codec {
   //
   // To obtain an instance of the [Codec] interface, see
   // [instantiateImageCodec].
-  @pragma('vm:entry-point')
   _NativeCodec._();
 
   int? _cachedFrameCount;
@@ -2571,11 +2571,9 @@ abstract class EngineLayer {
   void dispose();
 }
 
-@pragma('vm:entry-point')
 base class _NativeEngineLayer extends NativeFieldWrapperClass1 implements EngineLayer {
   /// This class is created by the engine, and should not be instantiated
   /// or extended directly.
-  @pragma('vm:entry-point')
   _NativeEngineLayer._();
 
   @override
@@ -2886,10 +2884,8 @@ abstract class Path {
   PathMetrics computeMetrics({bool forceClosed = false});
 }
 
-@pragma('vm:entry-point')
 base class _NativePath extends NativeFieldWrapperClass1 implements Path {
   /// Create a new empty [Path] object.
-  @pragma('vm:entry-point')
   _NativePath() { _constructor(); }
 
   /// Avoids creating a new native backing for the path for methods that will
@@ -3486,8 +3482,9 @@ class ColorFilter implements ImageFilter {
         _matrix = null,
         _type = _kTypeMode;
 
-  /// Construct a color filter that transforms a color by a 5x5 matrix, where
-  /// the fifth row is implicitly added in an identity configuration.
+  /// Construct a color filter from a 4x5 row-major matrix. The matrix is
+  /// interpreted as a 5x5 matrix, where the fifth row is the identity
+  /// configuration.
   ///
   /// Every pixel's color value, represented as an `[R, G, B, A]`, is matrix
   /// multiplied to create a new color:
@@ -3589,10 +3586,11 @@ class ColorFilter implements ImageFilter {
         }
         return _ColorFilter.mode(this);
       case _kTypeMatrix:
-        if (_matrix == null) {
+        final List<double>? matrix = _matrix;
+        if (matrix == null) {
           return null;
         }
-        assert(_matrix!.length == 20, 'Color Matrix must have 20 entries.');
+        assert(matrix.length == 20, 'Color Matrix must have 20 entries.');
         return _ColorFilter.matrix(this);
       case _kTypeLinearToSrgbGamma:
         return _ColorFilter.linearToSrgbGamma(this);
@@ -3616,7 +3614,10 @@ class ColorFilter implements ImageFilter {
   }
 
   @override
-  int get hashCode => Object.hash(_color, _blendMode, _matrix == null ? null : Object.hashAll(_matrix!), _type);
+  int get hashCode {
+    final List<double>? matrix = _matrix;
+    return Object.hash(_color, _blendMode, matrix == null ? null : Object.hashAll(matrix), _type);
+  }
 
   @override
   String get _shortDescription {
@@ -4190,7 +4191,11 @@ base class Gradient extends Shader {
   /// If `colorStops` is provided, `colorStops[i]` is a number from 0.0 to 1.0
   /// that specifies where `color[i]` begins in the gradient. If `colorStops` is
   /// not provided, then only two stops, at 0.0 and 1.0, are implied (and
-  /// `color` must therefore only have two entries).
+  /// `color` must therefore only have two entries). Stop values less than 0.0
+  /// will be rounded up to 0.0 and stop values greater than 1.0 will be rounded
+  /// down to 1.0. Each stop value must be greater than or equal to the previous
+  /// stop value. Stop values that do not meet this criteria will be rounded up
+  /// to the previous stop value.
   ///
   /// The behavior before `from` and after `to` is described by the `tileMode`
   /// argument. For details, see the [TileMode] enum.
@@ -4232,7 +4237,11 @@ base class Gradient extends Shader {
   /// If `colorStops` is provided, `colorStops[i]` is a number from 0.0 to 1.0
   /// that specifies where `color[i]` begins in the gradient. If `colorStops` is
   /// not provided, then only two stops, at 0.0 and 1.0, are implied (and
-  /// `color` must therefore only have two entries).
+  /// `color` must therefore only have two entries). Stop values less than 0.0
+  /// will be rounded up to 0.0 and stop values greater than 1.0 will be rounded
+  /// down to 1.0. Each stop value must be greater than or equal to the previous
+  /// stop value. Stop values that do not meet this criteria will be rounded up
+  /// to the previous stop value.
   ///
   /// The behavior before and after the radius is described by the `tileMode`
   /// argument. For details, see the [TileMode] enum.
@@ -4294,7 +4303,11 @@ base class Gradient extends Shader {
   /// If `colorStops` is provided, `colorStops[i]` is a number from 0.0 to 1.0
   /// that specifies where `color[i]` begins in the gradient. If `colorStops` is
   /// not provided, then only two stops, at 0.0 and 1.0, are implied (and
-  /// `color` must therefore only have two entries).
+  /// `color` must therefore only have two entries). Stop values less than 0.0
+  /// will be rounded up to 0.0 and stop values greater than 1.0 will be rounded
+  /// down to 1.0. Each stop value must be greater than or equal to the previous
+  /// stop value. Stop values that do not meet this criteria will be rounded up
+  /// to the previous stop value.
   ///
   /// The behavior before `startAngle` and after `endAngle` is described by the
   /// `tileMode` argument. For details, see the [TileMode] enum.
@@ -5193,7 +5206,7 @@ abstract class Canvas {
 
   /// Returns the conservative bounds of the combined result of all clip methods
   /// executed within the current save stack of this [Canvas] object, as measured
-  /// in the local coordinate space under which rendering operations are curretnly
+  /// in the local coordinate space under which rendering operations are currently
   /// performed.
   ///
   /// The combined clip results are rounded out to an integer pixel boundary before
@@ -5442,8 +5455,8 @@ abstract class Canvas {
   /// specified in the `vertices` using the `blendMode` parameter. For the
   /// purposes of this blending, the colors from the `paint` parameter are
   /// considered the source, and the colors from the `vertices` are considered
-  /// the destination. [BlendMode.dstOver] ignores the `paint` and uses only the
-  /// colors of the `vertices`; [BlendMode.srcOver] ignores the colors of the
+  /// the destination. [BlendMode.dst] ignores the `paint` and uses only the
+  /// colors of the `vertices`; [BlendMode.src] ignores the colors of the
   /// `vertices` and uses only the colors in the `paint`.
   ///
   /// All parameters must not be null.
@@ -5759,7 +5772,6 @@ abstract class Canvas {
 }
 
 base class _NativeCanvas extends NativeFieldWrapperClass1 implements Canvas {
-  @pragma('vm:entry-point')
   _NativeCanvas(PictureRecorder recorder, [ Rect? cullRect ])  {
     if (recorder.isRecording) {
       throw ArgumentError('"recorder" must not already be associated with another Canvas.');
@@ -6298,13 +6310,11 @@ abstract class Picture {
   int get approximateBytesUsed;
 }
 
-@pragma('vm:entry-point')
 base class _NativePicture extends NativeFieldWrapperClass1 implements Picture {
   /// This class is created by the engine, and should not be instantiated
   /// or extended directly.
   ///
   /// To create a [Picture], use a [PictureRecorder].
-  @pragma('vm:entry-point')
   _NativePicture._();
 
   @override
@@ -6403,7 +6413,6 @@ abstract class PictureRecorder {
 }
 
 base class _NativePictureRecorder extends NativeFieldWrapperClass1 implements PictureRecorder {
-  @pragma('vm:entry-point')
   _NativePictureRecorder() { _constructor(); }
 
   @Native<Void Function(Handle)>(symbol: 'PictureRecorder::Create')
@@ -6933,10 +6942,10 @@ Future<T> _futurize<T>(_Callbacker<T> callbacker) {
   // If the callback synchronously throws an error, then synchronously
   // rethrow that error instead of adding it to the completer. This
   // prevents the Zone from receiving an uncaught exception.
-  bool sync = true;
+  bool isSync = true;
   final String? error = callbacker((T? t) {
     if (t == null) {
-      if (sync) {
+      if (isSync) {
         throw Exception('operation failed');
       } else {
         completer.completeError(Exception('operation failed'));
@@ -6945,7 +6954,7 @@ Future<T> _futurize<T>(_Callbacker<T> callbacker) {
       completer.complete(t);
     }
   });
-  sync = false;
+  isSync = false;
   if (error != null) {
     throw Exception(error);
   }

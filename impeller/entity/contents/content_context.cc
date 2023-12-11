@@ -10,11 +10,13 @@
 #include "impeller/base/strings.h"
 #include "impeller/core/formats.h"
 #include "impeller/entity/entity.h"
+#include "impeller/entity/render_target_cache.h"
 #include "impeller/renderer/command_buffer.h"
 #include "impeller/renderer/pipeline_library.h"
 #include "impeller/renderer/render_pass.h"
 #include "impeller/renderer/render_target.h"
 #include "impeller/tessellator/tessellator.h"
+#include "impeller/typographer/typographer_context.h"
 
 namespace impeller {
 
@@ -36,10 +38,19 @@ void ContentContextOptions::ApplyToPipelineDescriptor(
 
   switch (pipeline_blend) {
     case BlendMode::kClear:
-      color0.dst_alpha_blend_factor = BlendFactor::kZero;
-      color0.dst_color_blend_factor = BlendFactor::kZero;
-      color0.src_alpha_blend_factor = BlendFactor::kZero;
-      color0.src_color_blend_factor = BlendFactor::kZero;
+      if (is_for_rrect_blur_clear) {
+        color0.alpha_blend_op = BlendOperation::kReverseSubtract;
+        color0.color_blend_op = BlendOperation::kReverseSubtract;
+        color0.dst_alpha_blend_factor = BlendFactor::kOne;
+        color0.dst_color_blend_factor = BlendFactor::kOne;
+        color0.src_alpha_blend_factor = BlendFactor::kDestinationColor;
+        color0.src_color_blend_factor = BlendFactor::kDestinationColor;
+      } else {
+        color0.dst_alpha_blend_factor = BlendFactor::kZero;
+        color0.dst_color_blend_factor = BlendFactor::kZero;
+        color0.src_alpha_blend_factor = BlendFactor::kZero;
+        color0.src_color_blend_factor = BlendFactor::kZero;
+      }
       break;
     case BlendMode::kSource:
       color0.blending_enabled = false;
@@ -150,20 +161,29 @@ static std::unique_ptr<PipelineT> CreateDefaultPipeline(
     return nullptr;
   }
   // Apply default ContentContextOptions to the descriptor.
-  const auto default_color_fmt =
+  const auto default_color_format =
       context.GetCapabilities()->GetDefaultColorFormat();
   ContentContextOptions{.sample_count = SampleCount::kCount4,
-                        .color_attachment_pixel_format = default_color_fmt}
+                        .color_attachment_pixel_format = default_color_format}
       .ApplyToPipelineDescriptor(*desc);
   return std::make_unique<PipelineT>(context, desc);
 }
 
-ContentContext::ContentContext(std::shared_ptr<Context> context)
+ContentContext::ContentContext(
+    std::shared_ptr<Context> context,
+    std::shared_ptr<TypographerContext> typographer_context,
+    std::shared_ptr<RenderTargetAllocator> render_target_allocator)
     : context_(std::move(context)),
+      lazy_glyph_atlas_(
+          std::make_shared<LazyGlyphAtlas>(std::move(typographer_context))),
       tessellator_(std::make_shared<Tessellator>()),
-      alpha_glyph_atlas_context_(std::make_shared<GlyphAtlasContext>()),
-      color_glyph_atlas_context_(std::make_shared<GlyphAtlasContext>()),
-      scene_context_(std::make_shared<scene::SceneContext>(context_)) {
+#if IMPELLER_ENABLE_3D
+      scene_context_(std::make_shared<scene::SceneContext>(context_)),
+#endif  // IMPELLER_ENABLE_3D
+      render_target_cache_(render_target_allocator == nullptr
+                               ? std::make_shared<RenderTargetCache>(
+                                     context_->GetResourceAllocator())
+                               : std::move(render_target_allocator)) {
   if (!context_ || !context_->IsValid()) {
     return;
   }
@@ -274,10 +294,6 @@ ContentContext::ContentContext(std::shared_ptr<Context> context)
       CreateDefaultPipeline<PositionUVPipeline>(*context_);
   tiled_texture_pipelines_[default_options_] =
       CreateDefaultPipeline<TiledTexturePipeline>(*context_);
-  gaussian_blur_alpha_decal_pipelines_[default_options_] =
-      CreateDefaultPipeline<GaussianBlurAlphaDecalPipeline>(*context_);
-  gaussian_blur_alpha_nodecal_pipelines_[default_options_] =
-      CreateDefaultPipeline<GaussianBlurAlphaPipeline>(*context_);
   gaussian_blur_noalpha_decal_pipelines_[default_options_] =
       CreateDefaultPipeline<GaussianBlurDecalPipeline>(*context_);
   gaussian_blur_noalpha_nodecal_pipelines_[default_options_] =
@@ -302,7 +318,13 @@ ContentContext::ContentContext(std::shared_ptr<Context> context)
       CreateDefaultPipeline<YUVToRGBFilterPipeline>(*context_);
   porter_duff_blend_pipelines_[default_options_] =
       CreateDefaultPipeline<PorterDuffBlendPipeline>(*context_);
-
+  // GLES only shader.
+#ifdef IMPELLER_ENABLE_OPENGLES
+  if (GetContext()->GetBackendType() == Context::BackendType::kOpenGLES) {
+    texture_external_pipelines_[default_options_] =
+        CreateDefaultPipeline<TextureExternalPipeline>(*context_);
+  }
+#endif  // IMPELLER_ENABLE_OPENGLES
   if (context_->GetCapabilities()->SupportsCompute()) {
     auto pipeline_desc =
         PointsComputeShaderPipeline::MakeDefaultPipelineDescriptor(*context_);
@@ -315,25 +337,29 @@ ContentContext::ContentContext(std::shared_ptr<Context> context)
         context_->GetPipelineLibrary()->GetPipeline(uv_pipeline_desc).Get();
   }
 
-  auto maybe_pipeline_desc =
-      solid_fill_pipelines_[default_options_]->GetDescriptor();
-  if (maybe_pipeline_desc.has_value()) {
-    auto clip_pipeline_descriptor = maybe_pipeline_desc.value();
-    clip_pipeline_descriptor.SetLabel("Clip Pipeline");
-    // Disable write to all color attachments.
-    auto color_attachments =
-        clip_pipeline_descriptor.GetColorAttachmentDescriptors();
-    for (auto& color_attachment : color_attachments) {
-      color_attachment.second.write_mask =
-          static_cast<uint64_t>(ColorWriteMask::kNone);
-    }
-    clip_pipeline_descriptor.SetColorAttachmentDescriptors(
-        std::move(color_attachments));
-    clip_pipelines_[default_options_] =
-        std::make_unique<ClipPipeline>(*context_, clip_pipeline_descriptor);
-  } else {
+  /// Setup default clip pipeline.
+
+  auto clip_pipeline_descriptor =
+      ClipPipeline::Builder::MakeDefaultPipelineDescriptor(*context_);
+  if (!clip_pipeline_descriptor.has_value()) {
     return;
   }
+  ContentContextOptions{
+      .sample_count = SampleCount::kCount4,
+      .color_attachment_pixel_format =
+          context_->GetCapabilities()->GetDefaultColorFormat()}
+      .ApplyToPipelineDescriptor(*clip_pipeline_descriptor);
+  // Disable write to all color attachments.
+  auto clip_color_attachments =
+      clip_pipeline_descriptor->GetColorAttachmentDescriptors();
+  for (auto& color_attachment : clip_color_attachments) {
+    color_attachment.second.write_mask =
+        static_cast<uint64_t>(ColorWriteMask::kNone);
+  }
+  clip_pipeline_descriptor->SetColorAttachmentDescriptors(
+      std::move(clip_color_attachments));
+  clip_pipelines_[default_options_] =
+      std::make_unique<ClipPipeline>(*context_, clip_pipeline_descriptor);
 
   is_valid_ = true;
 }
@@ -354,7 +380,8 @@ std::shared_ptr<Texture> ContentContext::MakeSubpass(
   RenderTarget subpass_target;
   if (context->GetCapabilities()->SupportsOffscreenMSAA() && msaa_enabled) {
     subpass_target = RenderTarget::CreateOffscreenMSAA(
-        *context, texture_size, SPrintF("%s Offscreen", label.c_str()),
+        *context, *GetRenderTargetCache(), texture_size,
+        SPrintF("%s Offscreen", label.c_str()),
         RenderTarget::kDefaultColorAttachmentConfigMSAA  //
 #ifndef FML_OS_ANDROID  // Reduce PSO variants for Vulkan.
         ,
@@ -363,7 +390,8 @@ std::shared_ptr<Texture> ContentContext::MakeSubpass(
     );
   } else {
     subpass_target = RenderTarget::CreateOffscreen(
-        *context, texture_size, SPrintF("%s Offscreen", label.c_str()),
+        *context, *GetRenderTargetCache(), texture_size,
+        SPrintF("%s Offscreen", label.c_str()),
         RenderTarget::kDefaultColorAttachmentConfig  //
 #ifndef FML_OS_ANDROID  // Reduce PSO variants for Vulkan.
         ,
@@ -399,18 +427,14 @@ std::shared_ptr<Texture> ContentContext::MakeSubpass(
   return subpass_texture;
 }
 
+#if IMPELLER_ENABLE_3D
 std::shared_ptr<scene::SceneContext> ContentContext::GetSceneContext() const {
   return scene_context_;
 }
+#endif  // IMPELLER_ENABLE_3D
 
 std::shared_ptr<Tessellator> ContentContext::GetTessellator() const {
   return tessellator_;
-}
-
-std::shared_ptr<GlyphAtlasContext> ContentContext::GetGlyphAtlasContext(
-    GlyphAtlas::Type type) const {
-  return type == GlyphAtlas::Type::kAlphaBitmap ? alpha_glyph_atlas_context_
-                                                : color_glyph_atlas_context_;
 }
 
 std::shared_ptr<Context> ContentContext::GetContext() const {

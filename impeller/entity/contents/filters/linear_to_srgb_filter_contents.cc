@@ -46,7 +46,7 @@ std::optional<Entity> LinearToSrgbFilterContents::RenderFilter(
                                const ContentContext& renderer,
                                const Entity& entity, RenderPass& pass) -> bool {
     Command cmd;
-    cmd.label = "Linear to sRGB Filter";
+    DEBUG_COMMAND_INFO(cmd, "Linear to sRGB Filter");
     cmd.stencil_reference = entity.GetStencilDepth();
 
     auto options = OptionsFromPassAndEntity(pass, entity);
@@ -76,7 +76,10 @@ std::optional<Entity> LinearToSrgbFilterContents::RenderFilter(
         input_snapshot->texture->GetYCoordScale();
 
     FS::FragInfo frag_info;
-    frag_info.input_alpha = absorb_opacity ? input_snapshot->opacity : 1.0f;
+    frag_info.input_alpha =
+        absorb_opacity == ColorFilterContents::AbsorbOpacity::kYes
+            ? input_snapshot->opacity
+            : 1.0f;
 
     auto sampler = renderer.GetContext()->GetSamplerLibrary()->GetSampler({});
     FS::BindInputTexture(cmd, input_snapshot->texture, sampler);

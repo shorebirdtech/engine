@@ -16,13 +16,10 @@ class EntityPass;
 
 class PaintPassDelegate final : public EntityPassDelegate {
  public:
-  PaintPassDelegate(Paint paint, std::optional<Rect> coverage);
+  explicit PaintPassDelegate(Paint paint);
 
   // |EntityPassDelgate|
   ~PaintPassDelegate() override;
-
-  // |EntityPassDelegate|
-  std::optional<Rect> GetCoverageRect() override;
 
   // |EntityPassDelgate|
   bool CanElide() override;
@@ -35,9 +32,13 @@ class PaintPassDelegate final : public EntityPassDelegate {
       std::shared_ptr<Texture> target,
       const Matrix& effect_transform) override;
 
+  // |EntityPassDelgate|
+  std::shared_ptr<FilterContents> WithImageFilter(
+      const FilterInput::Variant& input,
+      const Matrix& effect_transform) const override;
+
  private:
   const Paint paint_;
-  const std::optional<Rect> coverage_;
 
   FML_DISALLOW_COPY_AND_ASSIGN(PaintPassDelegate);
 };
@@ -49,13 +50,10 @@ class PaintPassDelegate final : public EntityPassDelegate {
 /// cannot forward to child subpass delegates.
 class OpacityPeepholePassDelegate final : public EntityPassDelegate {
  public:
-  OpacityPeepholePassDelegate(Paint paint, std::optional<Rect> coverage);
+  explicit OpacityPeepholePassDelegate(Paint paint);
 
   // |EntityPassDelgate|
   ~OpacityPeepholePassDelegate() override;
-
-  // |EntityPassDelegate|
-  std::optional<Rect> GetCoverageRect() override;
 
   // |EntityPassDelgate|
   bool CanElide() override;
@@ -68,9 +66,13 @@ class OpacityPeepholePassDelegate final : public EntityPassDelegate {
       std::shared_ptr<Texture> target,
       const Matrix& effect_transform) override;
 
+  // |EntityPassDelgate|
+  std::shared_ptr<FilterContents> WithImageFilter(
+      const FilterInput::Variant& input,
+      const Matrix& effect_transform) const override;
+
  private:
   const Paint paint_;
-  const std::optional<Rect> coverage_;
 
   FML_DISALLOW_COPY_AND_ASSIGN(OpacityPeepholePassDelegate);
 };

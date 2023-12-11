@@ -528,9 +528,11 @@ FLUTTER_ASSERT_ARC
   [scrollable accessibilityBridgeDidFinishUpdate];
   UIScrollView* scrollView = [scrollable nativeAccessibility];
   XCTAssertTrue(scrollView.isAccessibilityElement);
-  XCTAssertTrue([scrollView.accessibilityLabel isEqualToString:@"label"]);
-  XCTAssertTrue([scrollView.accessibilityValue isEqualToString:@"value"]);
-  XCTAssertTrue([scrollView.accessibilityHint isEqualToString:@"hint"]);
+  XCTAssertTrue(
+      [scrollView.accessibilityLabel isEqualToString:NSLocalizedString(@"label", @"test")]);
+  XCTAssertTrue(
+      [scrollView.accessibilityValue isEqualToString:NSLocalizedString(@"value", @"test")]);
+  XCTAssertTrue([scrollView.accessibilityHint isEqualToString:NSLocalizedString(@"hint", @"test")]);
 }
 
 - (void)testFlutterSemanticsObjectMergeTooltipToLabel {
@@ -656,7 +658,7 @@ FLUTTER_ASSERT_ARC
   FlutterSemanticsObject* object = [[FlutterSemanticsObject alloc] initWithBridge:bridge uid:0];
   [object setSemanticsNode:&node];
   NSMutableAttributedString* expectedAttributedLabel =
-      [[NSMutableAttributedString alloc] initWithString:@"label"];
+      [[NSMutableAttributedString alloc] initWithString:NSLocalizedString(@"label", @"test")];
   NSDictionary* attributeDict = @{
     UIAccessibilitySpeechAttributeSpellOut : @YES,
   };
@@ -665,7 +667,7 @@ FLUTTER_ASSERT_ARC
       [object.accessibilityAttributedLabel isEqualToAttributedString:expectedAttributedLabel]);
 
   NSMutableAttributedString* expectedAttributedValue =
-      [[NSMutableAttributedString alloc] initWithString:@"value"];
+      [[NSMutableAttributedString alloc] initWithString:NSLocalizedString(@"value", @"test")];
   attributeDict = @{
     UIAccessibilitySpeechAttributeSpellOut : @YES,
   };
@@ -674,7 +676,7 @@ FLUTTER_ASSERT_ARC
       [object.accessibilityAttributedValue isEqualToAttributedString:expectedAttributedValue]);
 
   NSMutableAttributedString* expectedAttributedHint =
-      [[NSMutableAttributedString alloc] initWithString:@"hint"];
+      [[NSMutableAttributedString alloc] initWithString:NSLocalizedString(@"hint", @"test")];
   attributeDict = @{
     UIAccessibilitySpeechAttributeLanguage : @"en-MX",
   };
@@ -782,7 +784,7 @@ FLUTTER_ASSERT_ARC
   nativeSwitch.on = YES;
 
   XCTAssertEqual(object.accessibilityTraits, nativeSwitch.accessibilityTraits);
-  XCTAssertEqual(object.accessibilityValue, nativeSwitch.accessibilityValue);
+  XCTAssertEqualObjects(object.accessibilityValue, nativeSwitch.accessibilityValue);
 
   // Set the toggled to false;
   flutter::SemanticsNode update;
@@ -794,7 +796,7 @@ FLUTTER_ASSERT_ARC
   nativeSwitch.on = NO;
 
   XCTAssertEqual(object.accessibilityTraits, nativeSwitch.accessibilityTraits);
-  XCTAssertEqual(object.accessibilityValue, nativeSwitch.accessibilityValue);
+  XCTAssertEqualObjects(object.accessibilityValue, nativeSwitch.accessibilityValue);
 }
 
 - (void)testFlutterSemanticsObjectOfRadioButton {
@@ -834,7 +836,7 @@ FLUTTER_ASSERT_ARC
   nativeSwitch.enabled = NO;
 
   XCTAssertEqual(object.accessibilityTraits, nativeSwitch.accessibilityTraits);
-  XCTAssertEqual(object.accessibilityValue, nativeSwitch.accessibilityValue);
+  XCTAssertEqualObjects(object.accessibilityValue, nativeSwitch.accessibilityValue);
 }
 
 - (void)testSemanticsObjectDeallocated {

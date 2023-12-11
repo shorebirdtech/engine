@@ -48,6 +48,7 @@ bool FramebufferBlendContents::Render(const ContentContext& renderer,
       std::nullopt,                                // sampler_descriptor
       true,                                        // msaa_enabled
       "FramebufferBlendContents Snapshot");        // label
+
   if (!src_snapshot.has_value()) {
     return true;
   }
@@ -56,21 +57,16 @@ bool FramebufferBlendContents::Render(const ContentContext& renderer,
     return true;
   }
   Rect src_coverage = coverage.value();
-  auto maybe_src_uvs = src_snapshot->GetCoverageUVs(src_coverage);
-  if (!maybe_src_uvs.has_value()) {
-    return true;
-  }
-  std::array<Point, 4> src_uvs = maybe_src_uvs.value();
 
   auto size = src_coverage.size;
   VertexBufferBuilder<VS::PerVertexData> vtx_builder;
   vtx_builder.AddVertices({
-      {Point(0, 0), src_uvs[0]},
-      {Point(size.width, 0), src_uvs[1]},
-      {Point(size.width, size.height), src_uvs[3]},
-      {Point(0, 0), src_uvs[0]},
-      {Point(size.width, size.height), src_uvs[3]},
-      {Point(0, size.height), src_uvs[2]},
+      {Point(0, 0), Point(0, 0)},
+      {Point(size.width, 0), Point(1, 0)},
+      {Point(size.width, size.height), Point(1, 1)},
+      {Point(0, 0), Point(0, 0)},
+      {Point(size.width, size.height), Point(1, 1)},
+      {Point(0, size.height), Point(0, 1)},
   });
   auto vtx_buffer = vtx_builder.CreateVertexBuffer(host_buffer);
 
@@ -78,7 +74,7 @@ bool FramebufferBlendContents::Render(const ContentContext& renderer,
   options.blend_mode = BlendMode::kSource;
 
   Command cmd;
-  cmd.label = "Framebuffer Advanced Blend Filter";
+  DEBUG_COMMAND_INFO(cmd, "Framebuffer Advanced Blend Filter");
   cmd.BindVertices(vtx_buffer);
   cmd.stencil_reference = entity.GetStencilDepth();
 
@@ -136,7 +132,7 @@ bool FramebufferBlendContents::Render(const ContentContext& renderer,
   FS::FragInfo frag_info;
 
   auto src_sampler_descriptor = src_snapshot->sampler_descriptor;
-  if (!renderer.GetDeviceCapabilities().SupportsDecalTileMode()) {
+  if (!renderer.GetDeviceCapabilities().SupportsDecalSamplerAddressMode()) {
     // No known devices that support framebuffer fetch but not decal tile mode.
     return false;
   }
@@ -154,7 +150,7 @@ bool FramebufferBlendContents::Render(const ContentContext& renderer,
   frag_info.src_input_alpha = src_snapshot->opacity;
   FS::BindFragInfo(cmd, host_buffer.EmplaceUniform(frag_info));
 
-  return pass.AddCommand(cmd);
+  return pass.AddCommand(std::move(cmd));
 }
 
 }  // namespace impeller

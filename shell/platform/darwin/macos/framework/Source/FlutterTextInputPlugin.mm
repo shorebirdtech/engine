@@ -342,6 +342,7 @@ static char markerKey;
   // The view needs an empty frame otherwise it is visible on dark background.
   // https://github.com/flutter/flutter/issues/118504
   self = [super initWithFrame:NSZeroRect];
+  self.clipsToBounds = YES;
   if (self != nil) {
     _flutterViewController = viewController;
     _channel = [FlutterMethodChannel methodChannelWithName:kTextInputChannel
@@ -536,7 +537,7 @@ static char markerKey;
     kSelectionIsDirectionalKey : @NO,
     kComposingBaseKey : @(composingBase),
     kComposingExtentKey : @(composingExtent),
-    kTextKey : [NSString stringWithUTF8String:_activeModel->GetText().c_str()]
+    kTextKey : [NSString stringWithUTF8String:_activeModel->GetText().c_str()] ?: [NSNull null],
   };
 }
 
@@ -620,7 +621,15 @@ static char markerKey;
   // text command (indicated by calling doCommandBySelector) or might not (for example, Cmd+Q). In
   // the latter case, this command somehow has not been executed yet and Flutter must dispatch it to
   // the next responder. See https://github.com/flutter/flutter/issues/106354 .
-  if (event.isKeyEquivalent && !_eventProducedOutput) {
+  // The event is also not redispatched if there is IME composition active, because it might be
+  // handled by the IME. See https://github.com/flutter/flutter/issues/134699
+
+  // both NSEventModifierFlagNumericPad and NSEventModifierFlagFunction are set for arrow keys.
+  bool is_navigation = event.modifierFlags & NSEventModifierFlagFunction &&
+                       event.modifierFlags & NSEventModifierFlagNumericPad;
+  bool is_navigation_in_ime = is_navigation && self.hasMarkedText;
+
+  if (event.isKeyEquivalent && !is_navigation_in_ime && !_eventProducedOutput) {
     return NO;
   }
   return res;

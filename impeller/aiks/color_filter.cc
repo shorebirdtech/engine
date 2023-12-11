@@ -43,9 +43,9 @@ BlendColorFilter::BlendColorFilter(BlendMode blend_mode, Color color)
 
 BlendColorFilter::~BlendColorFilter() = default;
 
-std::shared_ptr<ColorFilterContents> BlendColorFilter::GetColorFilter(
+std::shared_ptr<ColorFilterContents> BlendColorFilter::WrapWithGPUColorFilter(
     std::shared_ptr<FilterInput> input,
-    bool absorb_opacity) const {
+    ColorFilterContents::AbsorbOpacity absorb_opacity) const {
   auto filter =
       ColorFilterContents::MakeBlend(blend_mode_, {std::move(input)}, color_);
   filter->SetAbsorbOpacity(absorb_opacity);
@@ -58,6 +58,10 @@ ColorFilter::ColorFilterProc BlendColorFilter::GetCPUColorFilterProc() const {
   };
 }
 
+std::shared_ptr<ColorFilter> BlendColorFilter::Clone() const {
+  return std::make_shared<BlendColorFilter>(*this);
+}
+
 /*******************************************************************************
  ******* MatrixColorFilter
  ******************************************************************************/
@@ -67,9 +71,9 @@ MatrixColorFilter::MatrixColorFilter(ColorMatrix color_matrix)
 
 MatrixColorFilter::~MatrixColorFilter() = default;
 
-std::shared_ptr<ColorFilterContents> MatrixColorFilter::GetColorFilter(
+std::shared_ptr<ColorFilterContents> MatrixColorFilter::WrapWithGPUColorFilter(
     std::shared_ptr<FilterInput> input,
-    bool absorb_opacity) const {
+    ColorFilterContents::AbsorbOpacity absorb_opacity) const {
   auto filter =
       ColorFilterContents::MakeColorMatrix({std::move(input)}, color_matrix_);
   filter->SetAbsorbOpacity(absorb_opacity);
@@ -82,6 +86,10 @@ ColorFilter::ColorFilterProc MatrixColorFilter::GetCPUColorFilterProc() const {
   };
 }
 
+std::shared_ptr<ColorFilter> MatrixColorFilter::Clone() const {
+  return std::make_shared<MatrixColorFilter>(*this);
+}
+
 /*******************************************************************************
  ******* SrgbToLinearColorFilter
  ******************************************************************************/
@@ -90,9 +98,10 @@ SrgbToLinearColorFilter::SrgbToLinearColorFilter() = default;
 
 SrgbToLinearColorFilter::~SrgbToLinearColorFilter() = default;
 
-std::shared_ptr<ColorFilterContents> SrgbToLinearColorFilter::GetColorFilter(
+std::shared_ptr<ColorFilterContents>
+SrgbToLinearColorFilter::WrapWithGPUColorFilter(
     std::shared_ptr<FilterInput> input,
-    bool absorb_opacity) const {
+    ColorFilterContents::AbsorbOpacity absorb_opacity) const {
   auto filter = ColorFilterContents::MakeSrgbToLinearFilter({std::move(input)});
   filter->SetAbsorbOpacity(absorb_opacity);
   return filter;
@@ -103,6 +112,10 @@ ColorFilter::ColorFilterProc SrgbToLinearColorFilter::GetCPUColorFilterProc()
   return [](Color color) { return color.SRGBToLinear(); };
 }
 
+std::shared_ptr<ColorFilter> SrgbToLinearColorFilter::Clone() const {
+  return std::make_shared<SrgbToLinearColorFilter>(*this);
+}
+
 /*******************************************************************************
  ******* LinearToSrgbColorFilter
  ******************************************************************************/
@@ -111,9 +124,10 @@ LinearToSrgbColorFilter::LinearToSrgbColorFilter() = default;
 
 LinearToSrgbColorFilter::~LinearToSrgbColorFilter() = default;
 
-std::shared_ptr<ColorFilterContents> LinearToSrgbColorFilter::GetColorFilter(
+std::shared_ptr<ColorFilterContents>
+LinearToSrgbColorFilter::WrapWithGPUColorFilter(
     std::shared_ptr<FilterInput> input,
-    bool absorb_opacity) const {
+    ColorFilterContents::AbsorbOpacity absorb_opacity) const {
   auto filter = ColorFilterContents::MakeSrgbToLinearFilter({std::move(input)});
   filter->SetAbsorbOpacity(absorb_opacity);
   return filter;
@@ -122,6 +136,10 @@ std::shared_ptr<ColorFilterContents> LinearToSrgbColorFilter::GetColorFilter(
 ColorFilter::ColorFilterProc LinearToSrgbColorFilter::GetCPUColorFilterProc()
     const {
   return [](Color color) { return color.LinearToSRGB(); };
+}
+
+std::shared_ptr<ColorFilter> LinearToSrgbColorFilter::Clone() const {
+  return std::make_shared<LinearToSrgbColorFilter>(*this);
 }
 
 }  // namespace impeller

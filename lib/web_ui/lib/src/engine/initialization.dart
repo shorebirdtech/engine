@@ -169,7 +169,8 @@ Future<void> initializeEngineServices({
         // milliseconds as a double value, with sub-millisecond information
         // hidden in the fraction. So we first multiply it by 1000 to uncover
         // microsecond precision, and only then convert to `int`.
-        final int highResTimeMicroseconds = (1000 * highResTime.toDart).toInt();
+        final int highResTimeMicroseconds =
+            (1000 * highResTime.toDartDouble).toInt();
 
         // In Flutter terminology "building a frame" consists of "beginning
         // frame" and "drawing frame".
@@ -225,7 +226,6 @@ Future<void> initializeEngineUi() async {
   _initializationState = DebugEngineInitializationState.initializingUi;
 
   RawKeyboard.initialize(onMacOs: operatingSystem == OperatingSystem.macOs);
-  MouseCursor.initialize();
   ensureFlutterViewEmbedderInitialized();
   _initializationState = DebugEngineInitializationState.initialized;
 }
@@ -270,8 +270,3 @@ set debugDisableFontFallbacks(bool value) {
   _debugDisableFontFallbacks = value;
 }
 bool _debugDisableFontFallbacks = false;
-
-/// The shared instance of PlatformViewManager shared across the engine to handle
-/// rendering of PlatformViews into the web app.
-// TODO(dit): How to make this overridable from tests?
-final PlatformViewManager platformViewManager = PlatformViewManager();

@@ -40,6 +40,8 @@ class DisplayListMatrixClipTracker {
     current_->resetBounds(cull_rect ? *cull_rect : original_cull_rect_);
   }
 
+  static bool is_3x3(const SkM44& m44);
+
   SkRect base_device_cull_rect() const { return saved_[0]->device_cull_rect(); }
 
   bool using_4x4_matrix() const { return current_->is_4x4(); }
@@ -51,6 +53,7 @@ class DisplayListMatrixClipTracker {
   bool content_culled(const SkRect& content_bounds) const {
     return current_->content_culled(content_bounds);
   }
+  bool is_cull_rect_empty() const { return current_->is_cull_rect_empty(); }
 
   void save();
   void restore();
@@ -99,9 +102,10 @@ class DisplayListMatrixClipTracker {
     virtual SkMatrix matrix_3x3() const = 0;
     virtual SkM44 matrix_4x4() const = 0;
 
-    virtual SkRect device_cull_rect() const { return cull_rect_; }
+    SkRect device_cull_rect() const { return cull_rect_; }
     virtual SkRect local_cull_rect() const = 0;
     virtual bool content_culled(const SkRect& content_bounds) const;
+    bool is_cull_rect_empty() const { return cull_rect_.isEmpty(); }
 
     virtual void translate(SkScalar tx, SkScalar ty) = 0;
     virtual void scale(SkScalar sx, SkScalar sy) = 0;
@@ -120,7 +124,7 @@ class DisplayListMatrixClipTracker {
     virtual void resetBounds(const SkRect& cull_rect);
 
    protected:
-    Data(const SkRect& rect) : cull_rect_(rect) {}
+    explicit Data(const SkRect& rect) : cull_rect_(rect) {}
 
     virtual bool has_perspective() const = 0;
 

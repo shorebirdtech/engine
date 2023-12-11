@@ -21,7 +21,7 @@ static void HeapFree(void* userData, void* ptr) {
 }
 
 // Note: these units are "number of entities" for bucket size and not in KB.
-static TESSalloc alloc = {
+static const TESSalloc kAlloc = {
     HeapAlloc, HeapRealloc, HeapFree, 0, /* =userData */
     16,                                  /* =meshEdgeBucketSize */
     16,                                  /* =meshVertexBucketSize */
@@ -31,8 +31,14 @@ static TESSalloc alloc = {
     0                                    /* =extraVertices */
 };
 
-Tessellator::Tessellator()
-    : c_tessellator_(::tessNewTess(&alloc), &DestroyTessellator) {}
+Tessellator::Tessellator() : c_tessellator_(nullptr, &DestroyTessellator) {
+  TESSalloc alloc = kAlloc;
+  {
+    // libTess2 copies the TESSalloc despite the non-const argument.
+    CTessellator tessellator(::tessNewTess(&alloc), &DestroyTessellator);
+    c_tessellator_ = std::move(tessellator);
+  }
+}
 
 Tessellator::~Tessellator() = default;
 
@@ -105,18 +111,49 @@ Tessellator::Result Tessellator::Tessellate(
     return Result::kTessellationError;
   }
 
-  int vertexItemCount = tessGetVertexCount(tessellator) * kVertexSize;
-  auto vertices = tessGetVertices(tessellator);
-  int elementItemCount = tessGetElementCount(tessellator) * kPolygonSize;
-  auto elements = tessGetElements(tessellator);
-  // libtess uses an int index internally due to usage of -1 as a sentinel
-  // value.
-  std::vector<uint16_t> indices(elementItemCount);
-  for (int i = 0; i < elementItemCount; i++) {
-    indices[i] = static_cast<uint16_t>(elements[i]);
-  }
-  if (!callback(vertices, vertexItemCount, indices.data(), elementItemCount)) {
-    return Result::kInputError;
+  int element_item_count = tessGetElementCount(tessellator) * kPolygonSize;
+
+  // We default to using a 16bit index buffer, but in cases where we generate
+  // more tessellated data than this can contain we need to fall back to
+  // dropping the index buffer entirely. Instead code could instead switch to
+  // a uint32 index buffer, but this is done for simplicity with the other
+  // fast path above.
+  if (element_item_count < USHRT_MAX) {
+    int vertex_item_count = tessGetVertexCount(tessellator);
+    auto vertices = tessGetVertices(tessellator);
+    auto elements = tessGetElements(tessellator);
+
+    // libtess uses an int index internally due to usage of -1 as a sentinel
+    // value.
+    std::vector<uint16_t> indices(element_item_count);
+    for (int i = 0; i < element_item_count; i++) {
+      indices[i] = static_cast<uint16_t>(elements[i]);
+    }
+    if (!callback(vertices, vertex_item_count, indices.data(),
+                  element_item_count)) {
+      return Result::kInputError;
+    }
+  } else {
+    std::vector<Point> points;
+    std::vector<float> data;
+
+    int vertex_item_count = tessGetVertexCount(tessellator) * kVertexSize;
+    auto vertices = tessGetVertices(tessellator);
+    points.reserve(vertex_item_count);
+    for (int i = 0; i < vertex_item_count; i += 2) {
+      points.emplace_back(vertices[i], vertices[i + 1]);
+    }
+
+    int element_item_count = tessGetElementCount(tessellator) * kPolygonSize;
+    auto elements = tessGetElements(tessellator);
+    data.reserve(element_item_count);
+    for (int i = 0; i < element_item_count; i++) {
+      data.emplace_back(points[elements[i]].x);
+      data.emplace_back(points[elements[i]].y);
+    }
+    if (!callback(data.data(), element_item_count, nullptr, 0u)) {
+      return Result::kInputError;
+    }
   }
 
   return Result::kSuccess;

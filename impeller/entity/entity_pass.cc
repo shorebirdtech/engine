@@ -2,12 +2,15 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+// FLUTTER_NOLINT: https://github.com/flutter/flutter/issues/132129
+
 #include "impeller/entity/entity_pass.h"
 
 #include <memory>
 #include <utility>
 #include <variant>
 
+#include "flutter/fml/closure.h"
 #include "flutter/fml/logging.h"
 #include "flutter/fml/macros.h"
 #include "flutter/fml/trace_event.h"
@@ -50,15 +53,25 @@ std::tuple<std::optional<Color>, BlendMode> ElementAsBackgroundColor(
 }
 }  // namespace
 
+const std::string EntityPass::kCaptureDocumentName = "EntityPass";
+
 EntityPass::EntityPass() = default;
 
 EntityPass::~EntityPass() = default;
 
-void EntityPass::SetDelegate(std::unique_ptr<EntityPassDelegate> delegate) {
+void EntityPass::SetDelegate(std::shared_ptr<EntityPassDelegate> delegate) {
   if (!delegate) {
     return;
   }
   delegate_ = std::move(delegate);
+}
+
+void EntityPass::SetBoundsLimit(std::optional<Rect> bounds_limit) {
+  bounds_limit_ = bounds_limit;
+}
+
+std::optional<Rect> EntityPass::GetBoundsLimit() const {
+  return bounds_limit_;
 }
 
 void EntityPass::AddEntity(Entity entity) {
@@ -97,12 +110,72 @@ std::optional<Rect> EntityPass::GetElementsCoverage(
     if (auto entity = std::get_if<Entity>(&element)) {
       coverage = entity->GetCoverage();
 
+      // When the coverage limit is std::nullopt, that means there is no limit,
+      // as opposed to empty coverage.
       if (coverage.has_value() && coverage_limit.has_value()) {
+        const auto* filter = entity->GetContents()->AsFilter();
+        if (!filter || filter->IsTranslationOnly()) {
+          coverage = coverage->Intersection(coverage_limit.value());
+        }
+      }
+    } else if (auto subpass_ptr =
+                   std::get_if<std::unique_ptr<EntityPass>>(&element)) {
+      auto& subpass = *subpass_ptr->get();
+
+      std::optional<Rect> unfiltered_coverage =
+          GetSubpassCoverage(subpass, std::nullopt);
+
+      // If the current pass elements have any coverage so far and there's a
+      // backdrop filter, then incorporate the backdrop filter in the
+      // pre-filtered coverage of the subpass.
+      if (result.has_value() && subpass.backdrop_filter_proc_) {
+        std::shared_ptr<FilterContents> backdrop_filter =
+            subpass.backdrop_filter_proc_(FilterInput::Make(result.value()),
+                                          subpass.xformation_,
+                                          Entity::RenderingMode::kSubpass);
+        if (backdrop_filter) {
+          auto backdrop_coverage = backdrop_filter->GetCoverage({});
+          backdrop_coverage->origin += result->origin;
+          if (backdrop_coverage.has_value()) {
+            if (unfiltered_coverage.has_value()) {
+              unfiltered_coverage = coverage->Union(*backdrop_coverage);
+            } else {
+              unfiltered_coverage = backdrop_coverage;
+            }
+          }
+        } else {
+          VALIDATION_LOG << "The EntityPass backdrop filter proc didn't return "
+                            "a valid filter.";
+        }
+      }
+
+      if (!unfiltered_coverage.has_value()) {
+        continue;
+      }
+
+      // Additionally, subpass textures may be passed through filters, which may
+      // modify the coverage.
+      //
+      // Note that we currently only assume that ImageFilters (such as blurs and
+      // matrix transforms) may modify coverage, although it's technically
+      // possible ColorFilters to affect coverage as well. For example: A
+      // ColorMatrixFilter could output a completely transparent result, and
+      // we could potentially detect this case as zero coverage in the future.
+      std::shared_ptr<FilterContents> image_filter =
+          subpass.delegate_->WithImageFilter(*unfiltered_coverage,
+                                             subpass.xformation_);
+      if (image_filter) {
+        Entity subpass_entity;
+        subpass_entity.SetTransformation(subpass.xformation_);
+        coverage = image_filter->GetCoverage(subpass_entity);
+      } else {
+        coverage = unfiltered_coverage;
+      }
+
+      if (coverage.has_value() && coverage_limit.has_value() &&
+          (!image_filter || image_filter->IsTranslationOnly())) {
         coverage = coverage->Intersection(coverage_limit.value());
       }
-    } else if (auto subpass =
-                   std::get_if<std::unique_ptr<EntityPass>>(&element)) {
-      coverage = GetSubpassCoverage(*subpass->get(), coverage_limit);
     } else {
       FML_UNREACHABLE();
     }
@@ -122,26 +195,28 @@ std::optional<Rect> EntityPass::GetElementsCoverage(
 std::optional<Rect> EntityPass::GetSubpassCoverage(
     const EntityPass& subpass,
     std::optional<Rect> coverage_limit) const {
+  std::shared_ptr<FilterContents> image_filter =
+      subpass.delegate_->WithImageFilter(Rect(), subpass.xformation_);
+
+  // If the filter graph transforms the basis of the subpass, then its space
+  // has deviated too much from the parent pass to safely intersect with the
+  // pass coverage limit.
+  coverage_limit =
+      (image_filter && !image_filter->IsTranslationOnly() ? std::nullopt
+                                                          : coverage_limit);
+
   auto entities_coverage = subpass.GetElementsCoverage(coverage_limit);
   // The entities don't cover anything. There is nothing to do.
   if (!entities_coverage.has_value()) {
     return std::nullopt;
   }
 
-  // The delegates don't have an opinion on what the entity coverage has to be.
-  // Just use that as-is.
-  auto delegate_coverage = subpass.delegate_->GetCoverageRect();
-  if (!delegate_coverage.has_value()) {
+  if (!subpass.bounds_limit_.has_value()) {
     return entities_coverage;
   }
-  // The delegate coverage hint is in given in local space, so apply the subpass
-  // transformation.
-  delegate_coverage = delegate_coverage->TransformBounds(subpass.xformation_);
-
-  // If the delegate tells us the coverage is smaller than it needs to be, then
-  // great. OTOH, if the delegate is being wasteful, limit coverage to what is
-  // actually needed.
-  return entities_coverage->Intersection(delegate_coverage.value());
+  auto user_bounds_coverage =
+      subpass.bounds_limit_->TransformBounds(subpass.xformation_);
+  return entities_coverage->Intersection(user_bounds_coverage);
 }
 
 EntityPass* EntityPass::GetSuperpass() const {
@@ -167,6 +242,22 @@ EntityPass* EntityPass::AddSubpass(std::unique_ptr<EntityPass> pass) {
   return subpass_pointer;
 }
 
+void EntityPass::AddSubpassInline(std::unique_ptr<EntityPass> pass) {
+  if (!pass) {
+    return;
+  }
+  FML_DCHECK(pass->superpass_ == nullptr);
+
+  elements_.insert(elements_.end(),
+                   std::make_move_iterator(pass->elements_.begin()),
+                   std::make_move_iterator(pass->elements_.end()));
+
+  backdrop_filter_reads_from_pass_texture_ +=
+      pass->backdrop_filter_reads_from_pass_texture_;
+  advanced_blend_reads_from_pass_texture_ +=
+      pass->advanced_blend_reads_from_pass_texture_;
+}
+
 static RenderTarget::AttachmentConfig GetDefaultStencilConfig(bool readable) {
   return RenderTarget::AttachmentConfig{
       .storage_mode = readable ? StorageMode::kDevicePrivate
@@ -190,9 +281,10 @@ static EntityPassTarget CreateRenderTarget(ContentContext& renderer,
   RenderTarget target;
   if (context->GetCapabilities()->SupportsOffscreenMSAA()) {
     target = RenderTarget::CreateOffscreenMSAA(
-        *context,      // context
-        size,          // size
-        "EntityPass",  // label
+        *context,                          // context
+        *renderer.GetRenderTargetCache(),  // allocator
+        size,                              // size
+        "EntityPass",                      // label
         RenderTarget::AttachmentConfigMSAA{
             .storage_mode = StorageMode::kDeviceTransient,
             .resolve_storage_mode = StorageMode::kDevicePrivate,
@@ -203,13 +295,15 @@ static EntityPassTarget CreateRenderTarget(ContentContext& renderer,
     );
   } else {
     target = RenderTarget::CreateOffscreen(
-        *context,      // context
-        size,          // size
-        "EntityPass",  // label
+        *context,                          // context
+        *renderer.GetRenderTargetCache(),  // allocator
+        size,                              // size
+        "EntityPass",                      // label
         RenderTarget::AttachmentConfig{
             .storage_mode = StorageMode::kDevicePrivate,
             .load_action = LoadAction::kDontCare,
             .store_action = StoreAction::kDontCare,
+            .clear_color = clear_color,
         },                                 // color_attachment_config
         GetDefaultStencilConfig(readable)  // stencil_attachment_config
     );
@@ -228,12 +322,35 @@ uint32_t EntityPass::GetTotalPassReads(ContentContext& renderer) const {
 
 bool EntityPass::Render(ContentContext& renderer,
                         const RenderTarget& render_target) const {
+  auto capture =
+      renderer.GetContext()->capture.GetDocument(kCaptureDocumentName);
+
+  renderer.GetRenderTargetCache()->Start();
+
   auto root_render_target = render_target;
 
-  if (root_render_target.GetColorAttachments().empty()) {
+  if (root_render_target.GetColorAttachments().find(0u) ==
+      root_render_target.GetColorAttachments().end()) {
     VALIDATION_LOG << "The root RenderTarget must have a color attachment.";
     return false;
   }
+
+  capture.AddRect("Coverage",
+                  Rect::MakeSize(root_render_target.GetRenderTargetSize()),
+                  {.readonly = true});
+
+  fml::ScopedCleanupClosure reset_state([&renderer]() {
+    renderer.GetLazyGlyphAtlas()->ResetTextFrames();
+    renderer.GetRenderTargetCache()->End();
+  });
+
+  IterateAllEntities([lazy_glyph_atlas =
+                          renderer.GetLazyGlyphAtlas()](const Entity& entity) {
+    if (auto contents = entity.GetContents()) {
+      contents->PopulateGlyphAtlas(lazy_glyph_atlas, entity.DeriveTextScale());
+    }
+    return true;
+  });
 
   StencilCoverageStack stencil_coverage_stack = {StencilCoverageLayer{
       .coverage = Rect::MakeSize(root_render_target.GetRenderTargetSize()),
@@ -254,6 +371,7 @@ bool EntityPass::Render(ContentContext& renderer,
         GetClearColor(render_target.GetRenderTargetSize()));
 
     if (!OnRender(renderer,  // renderer
+                  capture,   // capture
                   offscreen_target.GetRenderTarget()
                       .GetRenderTargetSize(),  // root_pass_size
                   offscreen_target,            // pass_target
@@ -324,7 +442,7 @@ bool EntityPass::Render(ContentContext& renderer,
 
   // The safety check for fetching this color attachment is at the beginning of
   // this method.
-  auto color0 = root_render_target.GetColorAttachments().find(0)->second;
+  auto color0 = root_render_target.GetColorAttachments().find(0u)->second;
 
   // If a root stencil was provided by the caller, then verify that it has a
   // configuration which can be used to render this pass.
@@ -349,7 +467,8 @@ bool EntityPass::Render(ContentContext& renderer,
   // provided by the caller.
   else {
     root_render_target.SetupStencilAttachment(
-        *renderer.GetContext(), color0.texture->GetSize(),
+        *renderer.GetContext(), *renderer.GetRenderTargetCache(),
+        color0.texture->GetSize(),
         renderer.GetContext()->GetCapabilities()->SupportsOffscreenMSAA(),
         "ImpellerOnscreen",
         GetDefaultStencilConfig(reads_from_onscreen_backdrop));
@@ -365,6 +484,7 @@ bool EntityPass::Render(ContentContext& renderer,
 
   return OnRender(                               //
       renderer,                                  // renderer
+      capture,                                   // capture
       root_render_target.GetRenderTargetSize(),  // root_pass_size
       pass_target,                               // pass_target
       Point(),                                   // global_pass_position
@@ -376,6 +496,7 @@ bool EntityPass::Render(ContentContext& renderer,
 EntityPass::EntityResult EntityPass::GetEntityForElement(
     const EntityPass::Element& element,
     ContentContext& renderer,
+    Capture& capture,
     InlinePassContext& pass_context,
     ISize root_pass_size,
     Point global_pass_position,
@@ -390,6 +511,7 @@ EntityPass::EntityResult EntityPass::GetEntityForElement(
 
   if (const auto& entity = std::get_if<Entity>(&element)) {
     element_entity = *entity;
+    element_entity.SetCapture(capture.CreateChild("Entity"));
     if (!global_pass_position.IsZero()) {
       // If the pass image is going to be rendered with a non-zero position,
       // apply the negative translation to entity copies before rendering them
@@ -414,9 +536,11 @@ EntityPass::EntityResult EntityPass::GetEntityForElement(
 
     if (!subpass->backdrop_filter_proc_ &&
         subpass->delegate_->CanCollapseIntoParentPass(subpass)) {
+      auto subpass_capture = capture.CreateChild("EntityPass (Collapsed)");
       // Directly render into the parent target and move on.
       if (!subpass->OnRender(
               renderer,                      // renderer
+              subpass_capture,               // capture
               root_pass_size,                // root_pass_size
               pass_context.GetPassTarget(),  // pass_target
               global_pass_position,          // global_pass_position
@@ -439,9 +563,17 @@ EntityPass::EntityResult EntityPass::GetEntityForElement(
       auto texture = pass_context.GetTexture();
       // Render the backdrop texture before any of the pass elements.
       const auto& proc = subpass->backdrop_filter_proc_;
-      subpass_backdrop_filter_contents = proc(
-          FilterInput::Make(std::move(texture)), subpass->xformation_.Basis(),
-          /*is_subpass*/ true);
+      subpass_backdrop_filter_contents =
+          proc(FilterInput::Make(std::move(texture)),
+               subpass->xformation_.Basis(), Entity::RenderingMode::kSubpass);
+
+      // If the very first thing we render in this EntityPass is a subpass that
+      // happens to have a backdrop filter, than that backdrop filter will end
+      // may wind up sampling from the raw, uncleared texture that came straight
+      // out of the texture cache. By calling `pass_context.GetRenderPass` here,
+      // we force the texture to pass through at least one RenderPass with the
+      // correct clear configuration before any sampling occurs.
+      pass_context.GetRenderPass(pass_depth);
 
       // The subpass will need to read from the current pass texture when
       // rendering the backdrop, so if there's an active pass, end it prior to
@@ -452,10 +584,12 @@ EntityPass::EntityResult EntityPass::GetEntityForElement(
     if (stencil_coverage_stack.empty()) {
       // The current clip is empty. This means the pass texture won't be
       // visible, so skip it.
+      capture.CreateChild("Subpass Entity (Skipped: Empty clip A)");
       return EntityPass::EntityResult::Skip();
     }
     auto stencil_coverage_back = stencil_coverage_stack.back().coverage;
     if (!stencil_coverage_back.has_value()) {
+      capture.CreateChild("Subpass Entity (Skipped: Empty clip B)");
       return EntityPass::EntityResult::Skip();
     }
 
@@ -467,12 +601,14 @@ EntityPass::EntityResult EntityPass::GetEntityForElement(
                                             .GetRenderTargetSize()))
             .Intersection(stencil_coverage_back.value());
     if (!coverage_limit.has_value()) {
+      capture.CreateChild("Subpass Entity (Skipped: Empty coverage limit A)");
       return EntityPass::EntityResult::Skip();
     }
 
     coverage_limit =
         coverage_limit->Intersection(Rect::MakeSize(root_pass_size));
     if (!coverage_limit.has_value()) {
+      capture.CreateChild("Subpass Entity (Skipped: Empty coverage limit B)");
       return EntityPass::EntityResult::Skip();
     }
 
@@ -481,11 +617,13 @@ EntityPass::EntityResult EntityPass::GetEntityForElement(
             ? coverage_limit
             : GetSubpassCoverage(*subpass, coverage_limit);
     if (!subpass_coverage.has_value()) {
+      capture.CreateChild("Subpass Entity (Skipped: Empty subpass coverage A)");
       return EntityPass::EntityResult::Skip();
     }
 
     auto subpass_size = ISize(subpass_coverage->size);
     if (subpass_size.IsEmpty()) {
+      capture.CreateChild("Subpass Entity (Skipped: Empty subpass coverage B)");
       return EntityPass::EntityResult::Skip();
     }
 
@@ -500,10 +638,14 @@ EntityPass::EntityResult EntityPass::GetEntityForElement(
       return EntityPass::EntityResult::Failure();
     }
 
+    auto subpass_capture = capture.CreateChild("EntityPass");
+    subpass_capture.AddRect("Coverage", *subpass_coverage, {.readonly = true});
+
     // Stencil textures aren't shared between EntityPasses (as much of the
     // time they are transient).
     if (!subpass->OnRender(
             renderer,                  // renderer
+            subpass_capture,           // capture
             root_pass_size,            // root_pass_size
             subpass_target,            // pass_target
             subpass_coverage->origin,  // global_pass_position
@@ -540,12 +682,15 @@ EntityPass::EntityResult EntityPass::GetEntityForElement(
       // right thing.
       return EntityPass::EntityResult::Failure();
     }
-
+    Capture subpass_texture_capture =
+        capture.CreateChild("Entity (Subpass texture)");
+    element_entity.SetCapture(subpass_texture_capture);
     element_entity.SetContents(std::move(offscreen_texture_contents));
     element_entity.SetStencilDepth(subpass->stencil_depth_);
     element_entity.SetBlendMode(subpass->blend_mode_);
-    element_entity.SetTransformation(Matrix::MakeTranslation(
-        Vector3(subpass_coverage->origin - global_pass_position)));
+    element_entity.SetTransformation(subpass_texture_capture.AddMatrix(
+        "Transform", Matrix::MakeTranslation(Vector3(subpass_coverage->origin -
+                                                     global_pass_position))));
   } else {
     FML_UNREACHABLE();
   }
@@ -555,6 +700,7 @@ EntityPass::EntityResult EntityPass::GetEntityForElement(
 
 bool EntityPass::OnRender(
     ContentContext& renderer,
+    Capture& capture,
     ISize root_pass_size,
     EntityPassTarget& pass_target,
     Point global_pass_position,
@@ -574,13 +720,12 @@ bool EntityPass::OnRender(
     VALIDATION_LOG << SPrintF("Pass context invalid (Depth=%d)", pass_depth);
     return false;
   }
+  auto clear_color_size = pass_target.GetRenderTarget().GetRenderTargetSize();
 
-  if (!(GetClearColor(root_pass_size) == Color::BlackTransparent())) {
+  if (!collapsed_parent_pass &&
+      !GetClearColor(clear_color_size).IsTransparent()) {
     // Force the pass context to create at least one new pass if the clear color
-    // is present. The `EndPass` first ensures that the clear color will get
-    // applied even if this EntityPass is getting collapsed into the parent
-    // pass.
-    pass_context.EndPass();
+    // is present.
     pass_context.GetRenderPass(pass_depth);
   }
 
@@ -639,7 +784,16 @@ bool EntityPass::OnRender(
     // rendered output will actually be used, and so we set this to the current
     // stencil coverage (which is the max clip bounds). The contents may
     // optionally use this hint to avoid unnecessary rendering work.
-    element_entity.GetContents()->SetCoverageHint(current_stencil_coverage);
+    if (element_entity.GetContents()->GetCoverageHint().has_value()) {
+      // If the element already has a coverage hint (because its an advanced
+      // blend), then we need to intersect the stencil coverage hint with the
+      // existing coverage hint.
+      element_entity.GetContents()->SetCoverageHint(
+          current_stencil_coverage->Intersection(
+              element_entity.GetContents()->GetCoverageHint().value()));
+    } else {
+      element_entity.GetContents()->SetCoverageHint(current_stencil_coverage);
+    }
 
     switch (stencil_coverage.type) {
       case Contents::StencilCoverage::Type::kNoChange:
@@ -692,6 +846,17 @@ bool EntityPass::OnRender(
       } break;
     }
 
+#ifdef IMPELLER_ENABLE_CAPTURE
+    {
+      auto element_entity_coverage = element_entity.GetCoverage();
+      if (element_entity_coverage.has_value()) {
+        element_entity_coverage->origin += global_pass_position;
+        element_entity.GetCapture().AddRect(
+            "Coverage", *element_entity_coverage, {.readonly = true});
+      }
+    }
+#endif
+
     element_entity.SetStencilDepth(element_entity.GetStencilDepth() -
                                    stencil_depth_floor);
     if (!element_entity.Render(renderer, *result.pass)) {
@@ -728,7 +893,7 @@ bool EntityPass::OnRender(
     // Skip elements that are incorporated into the clear color.
     if (is_collapsing_clear_colors) {
       auto [entity_color, _] =
-          ElementAsBackgroundColor(element, root_pass_size);
+          ElementAsBackgroundColor(element, clear_color_size);
       if (entity_color.has_value()) {
         continue;
       }
@@ -738,6 +903,7 @@ bool EntityPass::OnRender(
     EntityResult result =
         GetEntityForElement(element,                 // element
                             renderer,                // renderer
+                            capture,                 // capture
                             pass_context,            // pass_context
                             root_pass_size,          // root_pass_size
                             global_pass_position,    // global_pass_position
@@ -845,6 +1011,22 @@ bool EntityPass::OnRender(
   return true;
 }
 
+void EntityPass::IterateAllElements(
+    const std::function<bool(Element&)>& iterator) {
+  if (!iterator) {
+    return;
+  }
+
+  for (auto& element : elements_) {
+    if (!iterator(element)) {
+      return;
+    }
+    if (auto subpass = std::get_if<std::unique_ptr<EntityPass>>(&element)) {
+      subpass->get()->IterateAllElements(iterator);
+    }
+  }
+}
+
 void EntityPass::IterateAllEntities(
     const std::function<bool(Entity&)>& iterator) {
   if (!iterator) {
@@ -860,6 +1042,28 @@ void EntityPass::IterateAllEntities(
     }
     if (auto subpass = std::get_if<std::unique_ptr<EntityPass>>(&element)) {
       subpass->get()->IterateAllEntities(iterator);
+      continue;
+    }
+    FML_UNREACHABLE();
+  }
+}
+
+void EntityPass::IterateAllEntities(
+    const std::function<bool(const Entity&)>& iterator) const {
+  if (!iterator) {
+    return;
+  }
+
+  for (const auto& element : elements_) {
+    if (auto entity = std::get_if<Entity>(&element)) {
+      if (!iterator(*entity)) {
+        return;
+      }
+      continue;
+    }
+    if (auto subpass = std::get_if<std::unique_ptr<EntityPass>>(&element)) {
+      const EntityPass* entity_pass = subpass->get();
+      entity_pass->IterateAllEntities(iterator);
       continue;
     }
     FML_UNREACHABLE();
@@ -906,6 +1110,16 @@ std::unique_ptr<EntityPass> EntityPass::Clone() const {
 
   auto pass = std::make_unique<EntityPass>();
   pass->SetElements(std::move(new_elements));
+  pass->backdrop_filter_reads_from_pass_texture_ =
+      backdrop_filter_reads_from_pass_texture_;
+  pass->advanced_blend_reads_from_pass_texture_ =
+      advanced_blend_reads_from_pass_texture_;
+  pass->backdrop_filter_proc_ = backdrop_filter_proc_;
+  pass->blend_mode_ = blend_mode_;
+  pass->delegate_ = delegate_;
+  // Note: I tried also adding flood clip and bounds limit but one of the
+  // two caused rendering in wonderous to break. It's 10:51 PM, and I'm
+  // ready to move on.
   return pass;
 }
 
@@ -917,6 +1131,10 @@ void EntityPass::SetStencilDepth(size_t stencil_depth) {
   stencil_depth_ = stencil_depth;
 }
 
+size_t EntityPass::GetStencilDepth() {
+  return stencil_depth_;
+}
+
 void EntityPass::SetBlendMode(BlendMode blend_mode) {
   blend_mode_ = blend_mode;
   flood_clip_ = Entity::IsBlendModeDestructive(blend_mode);
@@ -924,6 +1142,10 @@ void EntityPass::SetBlendMode(BlendMode blend_mode) {
 
 Color EntityPass::GetClearColor(ISize target_size) const {
   Color result = Color::BlackTransparent();
+  if (backdrop_filter_proc_) {
+    return result;
+  }
+
   for (const Element& element : elements_) {
     auto [entity_color, blend_mode] =
         ElementAsBackgroundColor(element, target_size);

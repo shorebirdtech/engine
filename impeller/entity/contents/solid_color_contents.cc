@@ -21,7 +21,11 @@ void SolidColorContents::SetColor(Color color) {
 }
 
 Color SolidColorContents::GetColor() const {
-  return color_.WithAlpha(color_.alpha * GetOpacity());
+  return color_.WithAlpha(color_.alpha * GetOpacityFactor());
+}
+
+bool SolidColorContents::IsSolidColor() const {
+  return true;
 }
 
 bool SolidColorContents::IsOpaque() const {
@@ -41,23 +45,15 @@ std::optional<Rect> SolidColorContents::GetCoverage(
   return geometry->GetCoverage(entity.GetTransformation());
 };
 
-bool SolidColorContents::ShouldRender(
-    const Entity& entity,
-    const std::optional<Rect>& stencil_coverage) const {
-  if (!stencil_coverage.has_value()) {
-    return false;
-  }
-  return Contents::ShouldRender(entity, stencil_coverage);
-}
-
 bool SolidColorContents::Render(const ContentContext& renderer,
                                 const Entity& entity,
                                 RenderPass& pass) const {
+  auto capture = entity.GetCapture().CreateChild("SolidColorContents");
+
   using VS = SolidFillPipeline::VertexShader;
-  using FS = SolidFillPipeline::FragmentShader;
 
   Command cmd;
-  cmd.label = "Solid Fill";
+  DEBUG_COMMAND_INFO(cmd, "Solid Fill");
   cmd.stencil_reference = entity.GetStencilDepth();
 
   auto geometry_result =
@@ -74,12 +70,9 @@ bool SolidColorContents::Render(const ContentContext& renderer,
   cmd.BindVertices(geometry_result.vertex_buffer);
 
   VS::FrameInfo frame_info;
-  frame_info.mvp = geometry_result.transform;
+  frame_info.mvp = capture.AddMatrix("Transform", geometry_result.transform);
+  frame_info.color = capture.AddColor("Color", GetColor()).Premultiply();
   VS::BindFrameInfo(cmd, pass.GetTransientsBuffer().EmplaceUniform(frame_info));
-
-  FS::FragInfo frag_info;
-  frag_info.color = GetColor().Premultiply();
-  FS::BindFragInfo(cmd, pass.GetTransientsBuffer().EmplaceUniform(frag_info));
 
   if (!pass.AddCommand(std::move(cmd))) {
     return false;
@@ -108,6 +101,12 @@ std::optional<Color> SolidColorContents::AsBackgroundColor(
   return GetGeometry()->CoversArea(entity.GetTransformation(), target_rect)
              ? GetColor()
              : std::optional<Color>();
+}
+
+bool SolidColorContents::ApplyColorFilter(
+    const ColorFilterProc& color_filter_proc) {
+  color_ = color_filter_proc(color_);
+  return true;
 }
 
 }  // namespace impeller

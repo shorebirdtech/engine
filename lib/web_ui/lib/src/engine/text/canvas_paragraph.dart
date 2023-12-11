@@ -94,9 +94,9 @@ class CanvasParagraph implements ui.Paragraph {
     // `30.5` then the TextPainter in the framework will ceil the `30.5` width
     // which will result in a width of `40.0` that's higher than the constraint
     // width.
-    constraints = ui.ParagraphConstraints(
-      width: constraints.width.floorToDouble(),
-    );
+    if (!ui.ParagraphBuilder.shouldDisableRoundingHack) {
+      constraints = ui.ParagraphConstraints(width: constraints.width.floorToDouble());
+    }
 
     if (constraints == _lastUsedConstraints) {
       return;
@@ -645,6 +645,12 @@ class CanvasParagraphBuilder implements ui.ParagraphBuilder {
 
   void _updateCanDrawOnCanvas(EngineTextStyle style) {
     if (!_canDrawOnCanvas) {
+      return;
+    }
+
+    final double? letterSpacing = style.letterSpacing;
+    if (letterSpacing != null && letterSpacing != 0.0) {
+      _canDrawOnCanvas = false;
       return;
     }
 
