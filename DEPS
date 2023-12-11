@@ -20,6 +20,11 @@ vars = {
   'ocmock_git': 'https://github.com/erikdoe/ocmock.git',
   'skia_revision': '795ed944ff5bde5916d193824589d3bacfa61a7d',
 
+  'dart_sdk_revision': '072a1dacbcf3522ee8a0e7043436b500c0cbbef9',
+  'dart_sdk_git': 'git@github.com:shorebirdtech/dart-sdk.git',
+  'updater_git': 'https://github.com/shorebirdtech/updater.git',
+  'updater_rev': 'd785568094c176d956ccf7ae918bf8d64c0d09b7',
+
   # WARNING: DO NOT EDIT canvaskit_cipd_instance MANUALLY
   # See `lib/web_ui/README.md` for how to roll CanvasKit to a new version.
   'canvaskit_cipd_instance': '61aeJQ9laGfEFF_Vlc_u0MCkqB6xb2hAYHRBxKH-Uw4C',
@@ -262,7 +267,7 @@ allowed_hosts = [
 ]
 
 deps = {
-  'src': 'https://github.com/flutter/buildroot.git' + '@' + 'f27d99b4428dea312646130d60c33a2d38fa9dc6',
+  'src': 'https://github.com/shorebirdtech/buildroot.git' + '@' + '2c3c95dc8cdb71fa176fe2e7886ef2022cbdc3bb',
 
    # Fuchsia compatibility
    #
@@ -329,7 +334,7 @@ deps = {
    Var('fuchsia_git') + '/protobuf-gn' + '@' + Var('dart_protobuf_gn_rev'),
 
   'src/third_party/dart':
-   Var('dart_git') + '/sdk.git' + '@' + Var('dart_revision'),
+   Var('dart_sdk_git') + '@' + Var('dart_sdk_revision'),
 
   # WARNING: Unused Dart dependencies in the list below till "WARNING:" marker are removed automatically - see create_updated_flutter_deps.py.
 
@@ -594,6 +599,9 @@ deps = {
 
   'src/third_party/ocmock':
    Var('ocmock_git') + '@' +  Var('ocmock_rev'),
+
+  'src/third_party/updater':
+   Var('updater_git') + '@' +  Var('updater_rev'),
 
   'src/third_party/libjpeg-turbo':
    Var('fuchsia_git') + '/third_party/libjpeg-turbo' + '@' + '0fb821f3b2e570b2783a94ccd9a2fb1f4916ae9f',
