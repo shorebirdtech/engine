@@ -429,7 +429,7 @@ Shell::Shell(DartVMRef vm,
       weak_factory_(this) {
 // FIXME: This is probably the wrong place to hook into.
 #if FML_OS_ANDROID || FML_OS_IOS
-  if (!vm) {
+  if (!vm_) {
     shorebird_report_launch_failure();
   } else {
     shorebird_report_launch_success();
