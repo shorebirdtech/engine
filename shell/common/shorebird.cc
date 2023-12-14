@@ -51,7 +51,7 @@ void SetBaseSnapshot(Settings& settings) {
   // we still need to seem to hold onto the DartSnapshot objects to keep
   // the mappings alive.
   vm_snapshot = DartSnapshot::VMSnapshotFromSettings(settings);
-  isolate_snapshot = DartSnapshot::IsolateSnapshotFromSettings(settings);  
+  isolate_snapshot = DartSnapshot::IsolateSnapshotFromSettings(settings);
   Shorebird_SetBaseSnapshots(isolate_snapshot->GetDataMapping(),
                              isolate_snapshot->GetInstructionsMapping(),
                              vm_snapshot->GetDataMapping(),
