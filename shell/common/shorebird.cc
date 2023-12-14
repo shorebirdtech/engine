@@ -51,12 +51,7 @@ void SetBaseSnapshot(Settings& settings) {
   // we still need to seem to hold onto the DartSnapshot objects to keep
   // the mappings alive.
   vm_snapshot = DartSnapshot::VMSnapshotFromSettings(settings);
-  isolate_snapshot = DartSnapshot::IsolateSnapshotFromSettings(settings);
-  assert(vm_snapshot);
-  // If you are crashing here, you probably are running Shorebird in a Debug
-  // config, where the AOT snapshot won't be linked into the process, and thus
-  // lookups will fail.  Change your Scheme to Release to fix:
-  // https://github.com/flutter/flutter/wiki/Debugging-the-engine#debugging-ios-builds-with-xcode
+  isolate_snapshot = DartSnapshot::IsolateSnapshotFromSettings(settings);  
   Shorebird_SetBaseSnapshots(isolate_snapshot->GetDataMapping(),
                              isolate_snapshot->GetInstructionsMapping(),
                              vm_snapshot->GetDataMapping(),
@@ -69,6 +64,12 @@ void ConfigureShorebird(std::string code_cache_path,
                         const std::string& shorebird_yaml,
                         const std::string& version,
                         const std::string& version_code) {
+  // If you are crashing here, you probably are running Shorebird in a Debug
+  // config, where the AOT snapshot won't be linked into the process, and thus
+  // lookups will fail.  Change your Scheme to Release to fix:
+  // https://github.com/flutter/flutter/wiki/Debugging-the-engine#debugging-ios-builds-with-xcode
+  assert(DartSnapshot::VMSnapshotFromSettings(settings));
+
   auto shorebird_updater_dir_name = "shorebird_updater";
 
   auto code_cache_dir = fml::paths::JoinPaths(
