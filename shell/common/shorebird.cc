@@ -68,7 +68,8 @@ void ConfigureShorebird(std::string code_cache_path,
   // config, where the AOT snapshot won't be linked into the process, and thus
   // lookups will fail.  Change your Scheme to Release to fix:
   // https://github.com/flutter/flutter/wiki/Debugging-the-engine#debugging-ios-builds-with-xcode
-  assert(DartSnapshot::VMSnapshotFromSettings(settings));
+  FML_CHECK(DartSnapshot::VMSnapshotFromSettings(settings))
+      << "XCode Scheme must be set to Release to use Shorebird";
 
   auto shorebird_updater_dir_name = "shorebird_updater";
 
