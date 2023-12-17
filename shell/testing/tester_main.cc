@@ -258,10 +258,17 @@ int RunTester(const flutter::Settings& settings,
     return EXIT_FAILURE;
   }
 
+#ifdef SHOREBIRD
+  if (settings.application_library_path.empty()) {
+    FML_LOG(ERROR) << "Dart snapshot path not specified.";
+    return EXIT_FAILURE;
+  }
+#else
   if (settings.application_kernel_asset.empty()) {
     FML_LOG(ERROR) << "Dart kernel file not specified.";
     return EXIT_FAILURE;
   }
+#endif
 
   shell->GetPlatformView()->NotifyCreated();
 
@@ -278,6 +285,9 @@ int RunTester(const flutter::Settings& settings,
       std::make_unique<flutter::PlatformMessage>(
           "flutter/localization", std::move(locale_bytes), response));
 
+#ifdef SHOREBIRD
+  auto isolate_configuration = IsolateConfiguration::CreateForAppSnapshot();
+#else
   std::initializer_list<fml::FileMapping::Protection> protection = {
       fml::FileMapping::Protection::kRead};
   auto main_dart_file_mapping = std::make_unique<fml::FileMapping>(
@@ -288,6 +298,7 @@ int RunTester(const flutter::Settings& settings,
 
   auto isolate_configuration =
       IsolateConfiguration::CreateForKernel(std::move(main_dart_file_mapping));
+#endif
 
   if (!isolate_configuration) {
     FML_LOG(ERROR) << "Could create isolate configuration.";
@@ -388,6 +399,18 @@ int main(int argc, char* argv[]) {
   }
 
   auto settings = flutter::SettingsFromCommandLine(command_line);
+
+#ifdef SHOREBIRD
+  if (!command_line.positional_args().empty()) {
+    settings.application_library_path.insert(
+        settings.application_library_path.begin(), command_line.positional_args()[0]);
+  }
+
+  if (settings.application_library_path.empty()) {
+    FML_LOG(ERROR) << "Dart snapshot path not specified.";
+    return EXIT_FAILURE;
+  }
+#else
   if (!command_line.positional_args().empty()) {
     // The tester may not use the switch for the main dart file path. Specifying
     // it as a positional argument instead.
@@ -398,6 +421,7 @@ int main(int argc, char* argv[]) {
     FML_LOG(ERROR) << "Dart kernel file not specified.";
     return EXIT_FAILURE;
   }
+#endif
 
   settings.leak_vm = false;
 
