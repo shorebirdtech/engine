@@ -70,4 +70,3 @@ executable("shorebird_tester") {
     entitlement_file_path = [ "flutter_tester" ]
   }
 }
-
