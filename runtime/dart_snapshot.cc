@@ -12,6 +12,7 @@
 #include "flutter/fml/trace_event.h"
 #include "flutter/lib/snapshot/snapshot.h"
 #include "flutter/runtime/dart_vm.h"
+#include "fml/logging.h"
 #include "third_party/dart/runtime/include/dart_api.h"
 
 namespace flutter {
@@ -40,6 +41,8 @@ static std::unique_ptr<const fml::Mapping> GetFileMapping(
   }
 }
 
+#define USE_VMCODE FML_OS_IOS || FML_OS_MACOSX
+
 // The first party embedders don't yet use the stable embedder API and depend on
 // the engine figuring out the locations of the various heap and instructions
 // buffers. Consequently, the engine had baked in opinions about where these
@@ -57,7 +60,9 @@ static std::shared_ptr<const fml::Mapping> SearchMapping(
     const std::vector<std::string>& native_library_path,
     const char* native_library_symbol_name,
     bool is_executable) {
-#if FML_OS_IOS
+  FML_LOG(INFO) << "Loading " << native_library_symbol_name;
+
+#if USE_VMCODE
   // Detect when we're trying to load a Shorebird patch.
   auto patch_path = native_library_path.front();
   bool is_patch = patch_path.find(".vmcode") != std::string::npos;
@@ -141,7 +146,7 @@ static std::shared_ptr<const fml::Mapping> SearchMapping(
       }
     }
 
-#if FML_OS_IOS
+#if USE_VMCODE
   }  // !is_patch
 #endif
 

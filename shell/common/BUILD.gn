@@ -107,6 +107,8 @@ source_set("common") {
     "shell.h",
     "shell_io_manager.cc",
     "shell_io_manager.h",
+    "shorebird.cc",
+    "shorebird.h",
     "skia_event_tracer_impl.cc",
     "skia_event_tracer_impl.h",
     "snapshot_controller.cc",
