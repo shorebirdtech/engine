@@ -403,7 +403,8 @@ int main(int argc, char* argv[]) {
 #ifdef SHOREBIRD
   if (!command_line.positional_args().empty()) {
     settings.application_library_path.insert(
-        settings.application_library_path.begin(), command_line.positional_args()[0]);
+        settings.application_library_path.begin(),
+        command_line.positional_args()[0]);
   }
 
   if (settings.application_library_path.empty()) {
