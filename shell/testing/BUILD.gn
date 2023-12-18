@@ -41,37 +41,41 @@ executable("testing") {
   }
 }
 
-executable("shorebird_tester") {
-  output_name = "shorebird_tester"
+# shorebird_tester is only supported on mac arm64, e.g.
+# ./flutter/tools/gn --runtime-mode=profile --unopt --no-goma --mac-cpu=arm64
+if (current_cpu == "arm64") {
+  executable("shorebird_tester") {
+    output_name = "shorebird_tester"
 
-  public_configs = [
-    "//flutter:config",
-    "//flutter:export_dynamic_symbols",
-  ]
+    public_configs = [
+      "//flutter:config",
+      "//flutter:export_dynamic_symbols",
+    ]
 
-  defines = [ "SHOREBIRD" ]
+    defines = [ "SHOREBIRD" ]
 
-  sources = [ "tester_main.cc" ]
-  deps = [
-    "//flutter/assets",
-    "//flutter/common",
-    "//flutter/flow",
-    "//flutter/fml",
-    "//flutter/lib/snapshot",
-    "//flutter/shell/common",
-    "//flutter/shell/gpu:gpu_surface_software",
-    "//flutter/third_party/tonic",
-    "//third_party/dart/runtime:libdart_precompiled_runtime",
-    "//third_party/dart/runtime/bin:dart_io_api",
-    "//third_party/dart/runtime/bin:elf_loader",
-    "//third_party/skia",
-  ]
+    sources = [ "tester_main.cc" ]
+    deps = [
+      "//flutter/assets",
+      "//flutter/common",
+      "//flutter/flow",
+      "//flutter/fml",
+      "//flutter/lib/snapshot",
+      "//flutter/shell/common",
+      "//flutter/shell/gpu:gpu_surface_software",
+      "//flutter/third_party/tonic",
+      "//third_party/dart/runtime:libdart_precompiled_runtime",
+      "//third_party/dart/runtime/bin:dart_io_api",
+      "//third_party/dart/runtime/bin:elf_loader",
+      "//third_party/skia",
+    ]
 
-  libs = [
-    "//third_party/updater/target/x86_64-apple-darwin/release/libupdater.a",
-  ]
+    libs = [
+      "//third_party/updater/target/aarch64-apple-darwin/release/libupdater.a",
+    ]
 
-  metadata = {
-    entitlement_file_path = [ "flutter_tester" ]
+    metadata = {
+      entitlement_file_path = [ "flutter_tester" ]
+    }
   }
 }
