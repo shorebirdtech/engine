@@ -143,13 +143,7 @@ class BlobsHandle {
       const DartSnapshot& isolate_snapshot) {
     // This needs to match the order in which the blobs are written out in
     // analyze_snapshot
-    std::vector<std::unique_ptr<fml::Mapping>> blobs;  //
-    // = {
-    //     DataBlob(vm_snapshot),
-    //     InstrBlob(vm_snapshot),
-    //     DataBlob(isolate_snapshot),
-    //     InstrBlob(isolate_snapshot),
-    // };
+    std::vector<std::unique_ptr<fml::Mapping>> blobs;
     blobs.push_back(DataBlob(vm_snapshot));
     blobs.push_back(InstrBlob(vm_snapshot));
     blobs.push_back(DataBlob(isolate_snapshot));
