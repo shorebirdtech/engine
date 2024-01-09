@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <memory>
 #include <optional>
+#include <utility>
 #include <vector>
 
 #include <sys/_types/_uintptr_t.h>
@@ -21,7 +22,6 @@
 #include "flutter/runtime/dart_vm.h"
 #include "flutter/shell/common/shell.h"
 #include "flutter/shell/common/switches.h"
-#include "platform/allocation.h"
 #include "third_party/dart/runtime/include/dart_tools_api.h"
 #include "third_party/skia/include/core/SkFontMgr.h"
 
@@ -64,14 +64,16 @@ void SetBaseSnapshot(Settings& settings) {
                              vm_snapshot->GetInstructionsMapping());
 }
 
+struct BlobsIndex {
+  size_t blob;
+  size_t offset;
+};
+
 // Provides a POSIX file I/O interface which allows us to provide the four data
 // blobs of a Dart snapshot (vm_data, vm_instructions, isolate_data,
 // isolate_instructions) to Rust as though it were a single piece of memory.
 class BlobsHandle {
  private:
-  BlobsHandle(std::vector<std::unique_ptr<fml::Mapping>> blobs)
-      : blobs_(blobs) {}
-
   static std::unique_ptr<fml::Mapping> DataBlob(const DartSnapshot& snapshot) {
     auto ptr = snapshot.GetDataMapping();
     return std::make_unique<fml::NonOwnedMapping>(ptr,
@@ -84,17 +86,75 @@ class BlobsHandle {
                                                   Dart_SnapshotDataSize(ptr));
   }
 
+  BlobsIndex IndexFromOffset(int64_t offset, BlobsIndex startIndex) {
+    // Compute a current blob and current blob offset from an offset that is
+    // possibly negative.
+    BlobsIndex index = startIndex;
+    if (offset < 0) {
+      // We need to seek backwards.
+      while (offset < 0) {
+        if (index.blob == 0 && index.offset == 0) {
+          // We have reached the beginning of the blobs.
+          break;
+        }
+        if (index.offset > 0) {
+          // We can seek backwards within the current blob.
+          intptr_t bytes_to_seek =
+              fmin(-offset, static_cast<int64_t>(index.offset));
+          index.offset -= bytes_to_seek;
+          offset += bytes_to_seek;
+        } else {
+          // Move to the end of the previous blob.
+          index.blob--;
+          index.offset = blobs_[index.blob]->GetSize() - 1;
+          offset++;
+        }
+      }
+    } else {
+      // We need to seek forwards.
+      while (offset > 0) {
+        if (index.blob >= blobs_.size()) {
+          // We have reached the end of the blobs.
+          break;
+        }
+        size_t remaining_blob_length =
+            blobs_[index.blob]->GetSize() - index.offset;
+        intptr_t bytes_to_seek =
+            fmin(offset, static_cast<int64_t>(remaining_blob_length));
+        index.offset += bytes_to_seek;
+        offset -= bytes_to_seek;
+        if (index.offset == blobs_[index.blob]->GetSize()) {
+          // Move to the start of the next blob
+          index.blob++;
+          index.offset = 0;
+        }
+      }
+    }
+
+    return index;
+  }
+
  public:
+  explicit BlobsHandle(std::vector<std::unique_ptr<fml::Mapping>> blobs)
+      : blobs_(std::move(blobs)) {}
+
   static std::unique_ptr<BlobsHandle> createForSnapshots(
       const DartSnapshot& vm_snapshot,
       const DartSnapshot& isolate_snapshot) {
-    std::vector<std::unique_ptr<fml::Mapping>> blobs = {
-        DataBlob(isolate_snapshot),
-        InstrBlob(isolate_snapshot),
-        DataBlob(vm_snapshot),
-        InstrBlob(vm_snapshot),
-    };
-    return std::make_unique<BlobsHandle>(blobs);
+    // This needs to match the order in which the blobs are written out in
+    // analyze_snapshot
+    std::vector<std::unique_ptr<fml::Mapping>> blobs;  //
+    // = {
+    //     DataBlob(vm_snapshot),
+    //     InstrBlob(vm_snapshot),
+    //     DataBlob(isolate_snapshot),
+    //     InstrBlob(isolate_snapshot),
+    // };
+    blobs.push_back(DataBlob(vm_snapshot));
+    blobs.push_back(InstrBlob(vm_snapshot));
+    blobs.push_back(DataBlob(isolate_snapshot));
+    blobs.push_back(InstrBlob(isolate_snapshot));
+    return std::make_unique<BlobsHandle>(std::move(blobs));
   }
 
   uintptr_t Read(uint8_t* buffer, uintptr_t length) {
@@ -102,68 +162,58 @@ class BlobsHandle {
     // Copy current blob from current offset and possibly into the next blob
     // until we have read length bytes.
     while (bytes_read < length) {
-      if (current_blob_ >= sizeof(blobs_) / sizeof(blobs_[0])) {
+      if (current_index_.blob >= blobs_.size()) {
         // We have read all blobs.
         break;
       }
-      intptr_t blob_length = [current_blob_] - current_blob_offset_;
-      if (blob_length == 0) {
+      intptr_t remaining_blob_length =
+          blobs_[current_index_.blob]->GetSize() - current_index_.offset;
+      if (remaining_blob_length == 0) {
         // We have read all bytes in this blob.
-        current_blob_++;
-        current_blob_offset_ = 0;
+        current_index_.blob++;
+        current_index_.offset = 0;
         continue;
       }
-      intptr_t bytes_to_read = fmin(length - bytes_read, blob_length);
-      memcpy(buffer + bytes_read, blobs_[current_blob_] + current_blob_offset_,
+      intptr_t bytes_to_read = fmin(length - bytes_read, remaining_blob_length);
+      memcpy(buffer + bytes_read,
+             blobs_[current_index_.blob]->GetMapping() + current_index_.offset,
              bytes_to_read);
       bytes_read += bytes_to_read;
-      current_blob_offset_ += bytes_to_read;
+      current_index_.offset += bytes_to_read;
     }
 
     return bytes_read;
   }
 
   int64_t Seek(int64_t offset, int32_t whence) {
+    BlobsIndex start_index;
     switch (whence) {
       case SEEK_SET:
-        current_blob_ = 0;
-        while (offset >= blob_lengths_[current_blob_]) {
-          offset -= blob_lengths_[current_blob_];
-          current_blob_++;
-        }
-        current_blob_offset_ = offset;
+        start_index = {0, 0};
         break;
       case SEEK_CUR:
-        while (offset >= blob_lengths_[current_blob_] - current_blob_offset_) {
-          offset -= blob_lengths_[current_blob_] - current_blob_offset_;
-          current_blob_++;
-          current_blob_offset_ = 0;
-        }
-        current_blob_offset_ += offset;
+        start_index = current_index_;
         break;
       case SEEK_END:
-        current_blob_ = sizeof(blobs_) / sizeof(blobs_[0]) - 1;
-        while (offset >= blob_lengths_[current_blob_]) {
-          offset -= blob_lengths_[current_blob_];
-          current_blob_--;
-        }
-        current_blob_offset_ = blob_lengths_[current_blob_] - offset;
+        start_index = {blobs_.size() - 1, blobs_.back()->GetSize() - 1};
         break;
       default:
-        break;
         // UNREACHABLE();
+        break;
     }
-    return current_blob_offset_;
+
+    current_index_ = IndexFromOffset(offset, start_index);
+    return current_index_.offset;
   }
 
  private:
-  size_t current_blob_ = 0;
-  size_t current_blob_offset_ = 0;
+  BlobsIndex current_index_;
   std::vector<std::unique_ptr<fml::Mapping>> blobs_;
 };
 
 class FileCallbacksImpl {
-  static void* Open(const char* name);
+ public:
+  static void* Open(const char* name, char mode);
   static uintptr_t Read(void* file, uint8_t* buffer, uintptr_t length);
   static int64_t Seek(void* file, int64_t offset, int32_t whence);
   static void Close(void* file);
@@ -223,7 +273,8 @@ void ConfigureShorebird(std::string code_cache_path,
     app_parameters.original_libapp_paths_size = c_paths.size();
 
     // shorebird_init copies from app_parameters and shorebirdYaml.
-    shorebird_init(&app_parameters, shorebird_yaml.c_str());
+    shorebird_init(&app_parameters, ShorebirdFileCallbacks(),
+                   shorebird_yaml.c_str());
   }
 
   // We've decided not to support synchronous updates on launch for now.
@@ -281,30 +332,28 @@ void ConfigureShorebird(std::string code_cache_path,
   }
 }
 
-void* FileCallbacksImpl::Open(const char* path) {
-  if (strcmp(path, shorebird_base_snapshot_path) != 0) {
-    return nullptr;
-  }
-  return BlobsHandle::createForSnapshots().release();
+void* FileCallbacksImpl::Open(const char* path, char mode) {
+  // TODO
+  // if (strcmp(path, shorebird_base_snapshot_path) != 0 || mode != 'r') {
+  //   return nullptr;
+  // }
+  return BlobsHandle::createForSnapshots(*vm_snapshot, *isolate_snapshot)
+      .release();
 }
 
-// Provides a Read interface to the underlying four buffers, concatening them
-// to appear as a single buffer.
 uintptr_t FileCallbacksImpl::Read(void* file,
                                   uint8_t* buffer,
                                   uintptr_t length) {
   // Currently we only support blob handles.
-  return reinterpret_cast<BlobsHandle*>(file)->read(buffer, length);
+  return reinterpret_cast<BlobsHandle*>(file)->Read(buffer, length);
 }
 
-// Provides a Seek interface to the underlying four buffers, concatening them
-// to appear as a single buffer.
-int64_t FileSystemCallbacks::Seek(void* file, int64_t offset, int32_t whence) {
+int64_t FileCallbacksImpl::Seek(void* file, int64_t offset, int32_t whence) {
   // Currently we only support blob handles.
-  return reinterpret_cast<BlobsHandle*>(file)->seek(buffer, offset, whence);
+  return reinterpret_cast<BlobsHandle*>(file)->Seek(offset, whence);
 }
 
-void FileSystemCallbacks::Close(void* file) {
+void FileCallbacksImpl::Close(void* file) {
   delete reinterpret_cast<BlobsHandle*>(file);
 }
 
