@@ -192,7 +192,7 @@ class BlobsHandle {
         start_index = {blobs_.size() - 1, blobs_.back()->GetSize() - 1};
         break;
       default:
-        // UNREACHABLE();
+        // Unreachable
         break;
     }
 
@@ -327,7 +327,7 @@ void ConfigureShorebird(std::string code_cache_path,
 }
 
 void* FileCallbacksImpl::Open(const char* path, char mode) {
-  // TODO
+  // TODO: Find a way to share constants from Rust to C++, use them here
   // if (strcmp(path, shorebird_base_snapshot_path) != 0 || mode != 'r') {
   //   return nullptr;
   // }
