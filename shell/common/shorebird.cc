@@ -1,12 +1,17 @@
 
 #include "flutter/shell/common/shorebird.h"
 
+#include <cstddef>
+#include <memory>
 #include <optional>
 #include <vector>
 
+#include <sys/_types/_uintptr_t.h>
+#include <third_party/dart/runtime/include/dart_native_api.h>
 #include "flutter/fml/command_line.h"
 #include "flutter/fml/file.h"
 #include "flutter/fml/macros.h"
+#include "flutter/fml/mapping.h"
 #include "flutter/fml/message_loop.h"
 #include "flutter/fml/native_library.h"
 #include "flutter/fml/paths.h"
@@ -16,6 +21,7 @@
 #include "flutter/runtime/dart_vm.h"
 #include "flutter/shell/common/shell.h"
 #include "flutter/shell/common/switches.h"
+#include "platform/allocation.h"
 #include "third_party/dart/runtime/include/dart_tools_api.h"
 #include "third_party/skia/include/core/SkFontMgr.h"
 
@@ -56,6 +62,120 @@ void SetBaseSnapshot(Settings& settings) {
                              isolate_snapshot->GetInstructionsMapping(),
                              vm_snapshot->GetDataMapping(),
                              vm_snapshot->GetInstructionsMapping());
+}
+
+// Provides a POSIX file I/O interface which allows us to provide the four data
+// blobs of a Dart snapshot (vm_data, vm_instructions, isolate_data,
+// isolate_instructions) to Rust as though it were a single piece of memory.
+class BlobsHandle {
+ private:
+  BlobsHandle(std::vector<std::unique_ptr<fml::Mapping>> blobs)
+      : blobs_(blobs) {}
+
+  static std::unique_ptr<fml::Mapping> DataBlob(const DartSnapshot& snapshot) {
+    auto ptr = snapshot.GetDataMapping();
+    return std::make_unique<fml::NonOwnedMapping>(ptr,
+                                                  Dart_SnapshotDataSize(ptr));
+  }
+
+  static std::unique_ptr<fml::Mapping> InstrBlob(const DartSnapshot& snapshot) {
+    auto ptr = snapshot.GetInstructionsMapping();
+    return std::make_unique<fml::NonOwnedMapping>(ptr,
+                                                  Dart_SnapshotDataSize(ptr));
+  }
+
+ public:
+  static std::unique_ptr<BlobsHandle> createForSnapshots(
+      const DartSnapshot& vm_snapshot,
+      const DartSnapshot& isolate_snapshot) {
+    std::vector<std::unique_ptr<fml::Mapping>> blobs = {
+        DataBlob(isolate_snapshot),
+        InstrBlob(isolate_snapshot),
+        DataBlob(vm_snapshot),
+        InstrBlob(vm_snapshot),
+    };
+    return std::make_unique<BlobsHandle>(blobs);
+  }
+
+  uintptr_t Read(uint8_t* buffer, uintptr_t length) {
+    uintptr_t bytes_read = 0;
+    // Copy current blob from current offset and possibly into the next blob
+    // until we have read length bytes.
+    while (bytes_read < length) {
+      if (current_blob_ >= sizeof(blobs_) / sizeof(blobs_[0])) {
+        // We have read all blobs.
+        break;
+      }
+      intptr_t blob_length = [current_blob_] - current_blob_offset_;
+      if (blob_length == 0) {
+        // We have read all bytes in this blob.
+        current_blob_++;
+        current_blob_offset_ = 0;
+        continue;
+      }
+      intptr_t bytes_to_read = fmin(length - bytes_read, blob_length);
+      memcpy(buffer + bytes_read, blobs_[current_blob_] + current_blob_offset_,
+             bytes_to_read);
+      bytes_read += bytes_to_read;
+      current_blob_offset_ += bytes_to_read;
+    }
+
+    return bytes_read;
+  }
+
+  int64_t Seek(int64_t offset, int32_t whence) {
+    switch (whence) {
+      case SEEK_SET:
+        current_blob_ = 0;
+        while (offset >= blob_lengths_[current_blob_]) {
+          offset -= blob_lengths_[current_blob_];
+          current_blob_++;
+        }
+        current_blob_offset_ = offset;
+        break;
+      case SEEK_CUR:
+        while (offset >= blob_lengths_[current_blob_] - current_blob_offset_) {
+          offset -= blob_lengths_[current_blob_] - current_blob_offset_;
+          current_blob_++;
+          current_blob_offset_ = 0;
+        }
+        current_blob_offset_ += offset;
+        break;
+      case SEEK_END:
+        current_blob_ = sizeof(blobs_) / sizeof(blobs_[0]) - 1;
+        while (offset >= blob_lengths_[current_blob_]) {
+          offset -= blob_lengths_[current_blob_];
+          current_blob_--;
+        }
+        current_blob_offset_ = blob_lengths_[current_blob_] - offset;
+        break;
+      default:
+        break;
+        // UNREACHABLE();
+    }
+    return current_blob_offset_;
+  }
+
+ private:
+  size_t current_blob_ = 0;
+  size_t current_blob_offset_ = 0;
+  std::vector<std::unique_ptr<fml::Mapping>> blobs_;
+};
+
+class FileCallbacksImpl {
+  static void* Open(const char* name);
+  static uintptr_t Read(void* file, uint8_t* buffer, uintptr_t length);
+  static int64_t Seek(void* file, int64_t offset, int32_t whence);
+  static void Close(void* file);
+};
+
+FileCallbacks ShorebirdFileCallbacks() {
+  return {
+      .open = FileCallbacksImpl::Open,
+      .read = FileCallbacksImpl::Read,
+      .seek = FileCallbacksImpl::Seek,
+      .close = FileCallbacksImpl::Close,
+  };
 }
 
 void ConfigureShorebird(std::string code_cache_path,
@@ -127,12 +247,11 @@ void ConfigureShorebird(std::string code_cache_path,
 
     // We only set the base snapshot on iOS for now.
 #if FML_OS_IOS
-    // Presumably we could always set the base snapshot, but right now the Dart
-    // will (intentionally) log if we set a base snapshot and it's not given a
-    // link table.  Once linking is more stable we can remove the log and always
-    // set the base snapshot.
-    // Make sure we set the base snapshot before we switch settings to point
-    // to the patch.
+    // Presumably we could always set the base snapshot, but right now the
+    // Dart will (intentionally) log if we set a base snapshot and it's not
+    // given a link table.  Once linking is more stable we can remove the log
+    // and always set the base snapshot. Make sure we set the base snapshot
+    // before we switch settings to point to the patch.
     SetBaseSnapshot(settings);
     // On iOS we add the patch to the front of the list instead of clearing
     // the list, to allow dart_shapshot.cc to still find the base snapshot
@@ -160,6 +279,33 @@ void ConfigureShorebird(std::string code_cache_path,
     FML_LOG(INFO)
         << "Shorebird auto_update disabled, not checking for updates.";
   }
+}
+
+void* FileCallbacksImpl::Open(const char* path) {
+  if (strcmp(path, shorebird_base_snapshot_path) != 0) {
+    return nullptr;
+  }
+  return BlobsHandle::createForSnapshots().release();
+}
+
+// Provides a Read interface to the underlying four buffers, concatening them
+// to appear as a single buffer.
+uintptr_t FileCallbacksImpl::Read(void* file,
+                                  uint8_t* buffer,
+                                  uintptr_t length) {
+  // Currently we only support blob handles.
+  return reinterpret_cast<BlobsHandle*>(file)->read(buffer, length);
+}
+
+// Provides a Seek interface to the underlying four buffers, concatening them
+// to appear as a single buffer.
+int64_t FileSystemCallbacks::Seek(void* file, int64_t offset, int32_t whence) {
+  // Currently we only support blob handles.
+  return reinterpret_cast<BlobsHandle*>(file)->seek(buffer, offset, whence);
+}
+
+void FileSystemCallbacks::Close(void* file) {
+  delete reinterpret_cast<BlobsHandle*>(file);
 }
 
 }  // namespace flutter
