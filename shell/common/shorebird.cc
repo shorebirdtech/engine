@@ -83,7 +83,7 @@ class BlobsHandle {
   static std::unique_ptr<fml::Mapping> InstrBlob(const DartSnapshot& snapshot) {
     auto ptr = snapshot.GetInstructionsMapping();
     return std::make_unique<fml::NonOwnedMapping>(ptr,
-                                                  Dart_SnapshotDataSize(ptr));
+                                                  Dart_SnapshotInstrSize(ptr));
   }
 
   BlobsIndex IndexFromOffset(int64_t offset, BlobsIndex startIndex) {
