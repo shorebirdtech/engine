@@ -7,7 +7,6 @@
 #include <utility>
 #include <vector>
 
-#include <sys/_types/_uintptr_t.h>
 #include <third_party/dart/runtime/include/dart_native_api.h>
 #include "flutter/fml/command_line.h"
 #include "flutter/fml/file.h"
@@ -22,6 +21,7 @@
 #include "flutter/runtime/dart_vm.h"
 #include "flutter/shell/common/shell.h"
 #include "flutter/shell/common/switches.h"
+#include "fml/logging.h"
 #include "third_party/dart/runtime/include/dart_tools_api.h"
 #include "third_party/skia/include/core/SkFontMgr.h"
 
@@ -69,8 +69,8 @@ struct BlobsIndex {
   size_t offset;
 };
 
-// Provides a POSIX file I/O interface which allows us to provide the four data
-// blobs of a Dart snapshot (vm_data, vm_instructions, isolate_data,
+// Implements a POSIX file I/O interface which allows us to provide the four
+// data blobs of a Dart snapshot (vm_data, vm_instructions, isolate_data,
 // isolate_instructions) to Rust as though it were a single piece of memory.
 class BlobsHandle {
  private:
@@ -86,52 +86,57 @@ class BlobsHandle {
                                                   Dart_SnapshotInstrSize(ptr));
   }
 
+  size_t FullSize() const {
+    size_t size = 0;
+    for (const auto& blob : blobs_) {
+      size += blob->GetSize();
+    }
+    return size;
+  }
+
+  size_t AbsoluteOffsetForIndex(BlobsIndex index) {
+    FML_CHECK(index.blob < blobs_.size());
+    FML_CHECK(index.offset < blobs_[index.blob]->GetSize());
+    size_t offset = 0;
+    for (size_t i = 0; i < index.blob; i++) {
+      offset += blobs_[i]->GetSize();
+    }
+    offset += index.offset;
+    return offset;
+  }
+
+  BlobsIndex IndexForAbsoluteOffset(size_t offset) {
+    FML_CHECK(offset < FullSize());
+    BlobsIndex index = {0, 0};
+    for (const auto& blob : blobs_) {
+      if (offset < blob->GetSize()) {
+        // The remaining offset is within this blob.
+        index.offset = offset;
+        break;
+      }
+
+      index.blob++;
+      offset -= blob->GetSize();
+    }
+    return index;
+  }
+
   BlobsIndex IndexFromOffset(int64_t offset, BlobsIndex startIndex) {
-    // Compute a current blob and current blob offset from an offset that is
-    // possibly negative.
-    BlobsIndex index = startIndex;
-    if (offset < 0) {
-      // We need to seek backwards.
-      while (offset < 0) {
-        if (index.blob == 0 && index.offset == 0) {
-          // We have reached the beginning of the blobs.
-          break;
-        }
-        if (index.offset > 0) {
-          // We can seek backwards within the current blob.
-          intptr_t bytes_to_seek =
-              fmin(-offset, static_cast<int64_t>(index.offset));
-          index.offset -= bytes_to_seek;
-          offset += bytes_to_seek;
-        } else {
-          // Move to the end of the previous blob.
-          index.blob--;
-          index.offset = blobs_[index.blob]->GetSize() - 1;
-          offset++;
-        }
-      }
-    } else {
-      // We need to seek forwards.
-      while (offset > 0) {
-        if (index.blob >= blobs_.size()) {
-          // We have reached the end of the blobs.
-          break;
-        }
-        size_t remaining_blob_length =
-            blobs_[index.blob]->GetSize() - index.offset;
-        intptr_t bytes_to_seek =
-            fmin(offset, static_cast<int64_t>(remaining_blob_length));
-        index.offset += bytes_to_seek;
-        offset -= bytes_to_seek;
-        if (index.offset == blobs_[index.blob]->GetSize()) {
-          // Move to the start of the next blob
-          index.blob++;
-          index.offset = 0;
-        }
-      }
+    size_t start_offset = AbsoluteOffsetForIndex(startIndex);
+    size_t dest_offset = start_offset + offset;
+    if (dest_offset < 0) {
+      FML_LOG(ERROR) << "Seeking before the beginning of the blobs";
+      // Seeking before the beginning of the blobs.
+      return {0, 0};
     }
 
-    return index;
+    if (dest_offset >= FullSize()) {
+      // Seeking past the end of the blobs.
+      FML_LOG(ERROR) << "Seeking past the end of the blobs";
+      return {blobs_.size(), 0};
+    }
+
+    return IndexForAbsoluteOffset(dest_offset);
   }
 
  public:
