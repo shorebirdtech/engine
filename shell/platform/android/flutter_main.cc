@@ -23,7 +23,7 @@
 #include "flutter/lib/ui/plugins/callback_cache.h"
 #include "flutter/runtime/dart_vm.h"
 #include "flutter/shell/common/shell.h"
-#include "flutter/shell/common/shorebird.h"
+#include "flutter/shell/common/shorebird/shorebird.h"
 #include "flutter/shell/common/switches.h"
 #include "third_party/dart/runtime/include/dart_tools_api.h"
 #include "third_party/skia/include/core/SkFontMgr.h"
@@ -132,8 +132,9 @@ void FlutterMain::Init(JNIEnv* env,
   std::string version_string = fml::jni::JavaStringToString(env, version);
   std::string version_code_string =
       fml::jni::JavaStringToString(env, versionCode);
-  ConfigureShorebird(code_cache_path, app_storage_path, settings,
-                     shorebird_yaml, version_string, version_code_string);
+  Shorebird::ConfigureShorebird(code_cache_path, app_storage_path, settings,
+                                shorebird_yaml, version_string,
+                                version_code_string);
 #endif
 
   flutter::DartCallbackCache::LoadCacheFromDisk();

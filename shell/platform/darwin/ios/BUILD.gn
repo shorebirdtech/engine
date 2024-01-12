@@ -74,8 +74,6 @@ source_set("flutter_framework_source") {
   deps = []
 
   sources = [
-    "../../../common/shorebird.cc",
-    "../../../common/shorebird.h",
     "framework/Source/FlutterAppDelegate.mm",
     "framework/Source/FlutterCallbackCache.mm",
     "framework/Source/FlutterCallbackCache_Internal.h",
@@ -190,6 +188,7 @@ source_set("flutter_framework_source") {
     "//flutter/runtime",
     "//flutter/runtime:libdart",
     "//flutter/shell/common",
+    "//flutter/shell/common/shorebird",
     "//flutter/shell/platform/common:common_cpp_input",
     "//flutter/shell/platform/darwin/common",
     "//flutter/shell/platform/darwin/common:framework_common",

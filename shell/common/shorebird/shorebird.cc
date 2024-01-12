@@ -1,5 +1,5 @@
 
-#include "flutter/shell/common/shorebird.h"
+#include "flutter/shell/common/shorebird/shorebird.h"
 
 #include <cstddef>
 #include <memory>
@@ -7,7 +7,6 @@
 #include <utility>
 #include <vector>
 
-#include <third_party/dart/runtime/include/dart_native_api.h>
 #include "flutter/fml/command_line.h"
 #include "flutter/fml/file.h"
 #include "flutter/fml/macros.h"
@@ -20,6 +19,7 @@
 #include "flutter/runtime/dart_snapshot.h"
 #include "flutter/runtime/dart_vm.h"
 #include "flutter/shell/common/shell.h"
+#include "flutter/shell/common/shorebird/blobs_handle.h"
 #include "flutter/shell/common/switches.h"
 #include "fml/logging.h"
 #include "third_party/dart/runtime/include/dart_tools_api.h"
@@ -64,152 +64,6 @@ void SetBaseSnapshot(Settings& settings) {
                              vm_snapshot->GetInstructionsMapping());
 }
 
-struct BlobsIndex {
-  size_t blob;
-  size_t offset;
-};
-
-// Implements a POSIX file I/O interface which allows us to provide the four
-// data blobs of a Dart snapshot (vm_data, vm_instructions, isolate_data,
-// isolate_instructions) to Rust as though it were a single piece of memory.
-class BlobsHandle {
- private:
-  static std::unique_ptr<fml::Mapping> DataBlob(const DartSnapshot& snapshot) {
-    auto ptr = snapshot.GetDataMapping();
-    return std::make_unique<fml::NonOwnedMapping>(ptr,
-                                                  Dart_SnapshotDataSize(ptr));
-  }
-
-  static std::unique_ptr<fml::Mapping> InstrBlob(const DartSnapshot& snapshot) {
-    auto ptr = snapshot.GetInstructionsMapping();
-    return std::make_unique<fml::NonOwnedMapping>(ptr,
-                                                  Dart_SnapshotInstrSize(ptr));
-  }
-
-  size_t FullSize() const {
-    size_t size = 0;
-    for (const auto& blob : blobs_) {
-      size += blob->GetSize();
-    }
-    return size;
-  }
-
-  size_t AbsoluteOffsetForIndex(BlobsIndex index) {
-    FML_CHECK(index.blob < blobs_.size());
-    FML_CHECK(index.offset < blobs_[index.blob]->GetSize());
-    size_t offset = 0;
-    for (size_t i = 0; i < index.blob; i++) {
-      offset += blobs_[i]->GetSize();
-    }
-    offset += index.offset;
-    return offset;
-  }
-
-  BlobsIndex IndexForAbsoluteOffset(size_t offset) {
-    FML_CHECK(offset < FullSize());
-    BlobsIndex index = {0, 0};
-    for (const auto& blob : blobs_) {
-      if (offset < blob->GetSize()) {
-        // The remaining offset is within this blob.
-        index.offset = offset;
-        break;
-      }
-
-      index.blob++;
-      offset -= blob->GetSize();
-    }
-    return index;
-  }
-
-  BlobsIndex IndexFromOffset(int64_t offset, BlobsIndex startIndex) {
-    size_t start_offset = AbsoluteOffsetForIndex(startIndex);
-    size_t dest_offset = start_offset + offset;
-    if (dest_offset < 0) {
-      FML_LOG(ERROR) << "Seeking before the beginning of the blobs";
-      // Seeking before the beginning of the blobs.
-      return {0, 0};
-    }
-
-    if (dest_offset >= FullSize()) {
-      // Seeking past the end of the blobs.
-      FML_LOG(ERROR) << "Seeking past the end of the blobs";
-      return {blobs_.size(), 0};
-    }
-
-    return IndexForAbsoluteOffset(dest_offset);
-  }
-
- public:
-  explicit BlobsHandle(std::vector<std::unique_ptr<fml::Mapping>> blobs)
-      : blobs_(std::move(blobs)) {}
-
-  static std::unique_ptr<BlobsHandle> createForSnapshots(
-      const DartSnapshot& vm_snapshot,
-      const DartSnapshot& isolate_snapshot) {
-    // This needs to match the order in which the blobs are written out in
-    // analyze_snapshot
-    std::vector<std::unique_ptr<fml::Mapping>> blobs;
-    blobs.push_back(DataBlob(vm_snapshot));
-    blobs.push_back(InstrBlob(vm_snapshot));
-    blobs.push_back(DataBlob(isolate_snapshot));
-    blobs.push_back(InstrBlob(isolate_snapshot));
-    return std::make_unique<BlobsHandle>(std::move(blobs));
-  }
-
-  uintptr_t Read(uint8_t* buffer, uintptr_t length) {
-    uintptr_t bytes_read = 0;
-    // Copy current blob from current offset and possibly into the next blob
-    // until we have read length bytes.
-    while (bytes_read < length) {
-      if (current_index_.blob >= blobs_.size()) {
-        // We have read all blobs.
-        break;
-      }
-      intptr_t remaining_blob_length =
-          blobs_[current_index_.blob]->GetSize() - current_index_.offset;
-      if (remaining_blob_length == 0) {
-        // We have read all bytes in this blob.
-        current_index_.blob++;
-        current_index_.offset = 0;
-        continue;
-      }
-      intptr_t bytes_to_read = fmin(length - bytes_read, remaining_blob_length);
-      memcpy(buffer + bytes_read,
-             blobs_[current_index_.blob]->GetMapping() + current_index_.offset,
-             bytes_to_read);
-      bytes_read += bytes_to_read;
-      current_index_.offset += bytes_to_read;
-    }
-
-    return bytes_read;
-  }
-
-  int64_t Seek(int64_t offset, int32_t whence) {
-    BlobsIndex start_index;
-    switch (whence) {
-      case SEEK_SET:
-        start_index = {0, 0};
-        break;
-      case SEEK_CUR:
-        start_index = current_index_;
-        break;
-      case SEEK_END:
-        start_index = {blobs_.size() - 1, blobs_.back()->GetSize() - 1};
-        break;
-      default:
-        // Unreachable
-        break;
-    }
-
-    current_index_ = IndexFromOffset(offset, start_index);
-    return current_index_.offset;
-  }
-
- private:
-  BlobsIndex current_index_;
-  std::vector<std::unique_ptr<fml::Mapping>> blobs_;
-};
-
 class FileCallbacksImpl {
  public:
   static void* Open(const char* name, char mode);
@@ -227,12 +81,12 @@ FileCallbacks ShorebirdFileCallbacks() {
   };
 }
 
-void ConfigureShorebird(std::string code_cache_path,
-                        std::string app_storage_path,
-                        Settings& settings,
-                        const std::string& shorebird_yaml,
-                        const std::string& version,
-                        const std::string& version_code) {
+void Shorebird::ConfigureShorebird(std::string code_cache_path,
+                                   std::string app_storage_path,
+                                   Settings& settings,
+                                   const std::string& shorebird_yaml,
+                                   const std::string& version,
+                                   const std::string& version_code) {
   // If you are crashing here, you probably are running Shorebird in a Debug
   // config, where the AOT snapshot won't be linked into the process, and thus
   // lookups will fail.  Change your Scheme to Release to fix:
@@ -282,6 +136,11 @@ void ConfigureShorebird(std::string code_cache_path,
   // within Dart, including updating as part of login, etc.
   // https://github.com/shorebirdtech/shorebird/issues/950
 
+  // We only set the base snapshot on iOS for now.
+#if FML_OS_IOS
+  SetBaseSnapshot(settings);
+#endif
+
   char* c_active_path = shorebird_next_boot_patch_path();
   if (c_active_path != NULL) {
     std::string active_path = c_active_path;
@@ -295,14 +154,7 @@ void ConfigureShorebird(std::string code_cache_path,
                     << c_patch_number;
     }
 
-    // We only set the base snapshot on iOS for now.
 #if FML_OS_IOS
-    // Presumably we could always set the base snapshot, but right now the
-    // Dart will (intentionally) log if we set a base snapshot and it's not
-    // given a link table.  Once linking is more stable we can remove the log
-    // and always set the base snapshot. Make sure we set the base snapshot
-    // before we switch settings to point to the patch.
-    SetBaseSnapshot(settings);
     // On iOS we add the patch to the front of the list instead of clearing
     // the list, to allow dart_shapshot.cc to still find the base snapshot
     // for the vm isolate.
@@ -332,10 +184,17 @@ void ConfigureShorebird(std::string code_cache_path,
 }
 
 void* FileCallbacksImpl::Open(const char* path, char mode) {
-  // TODO: Find a way to share constants from Rust to C++, use them here
-  // if (strcmp(path, shorebird_base_snapshot_path) != 0 || mode != 'r') {
-  //   return nullptr;
-  // }
+  if (strcmp(path, (char*)SHOREBIRD_PATCH_BASE_FILENAME) != 0) {
+    FML_LOG(ERROR) << "Attempting to open unrecognized file: " << path;
+    return nullptr;
+  }
+
+  if (mode != 'r') {
+    FML_LOG(ERROR) << "Attempting to open file with mode other than 'r': "
+                   << mode;
+    return nullptr;
+  }
+
   return BlobsHandle::createForSnapshots(*vm_snapshot, *isolate_snapshot)
       .release();
 }

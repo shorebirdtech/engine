@@ -20,7 +20,7 @@
 #include "flutter/fml/platform/darwin/scoped_nsobject.h"
 #include "flutter/runtime/dart_vm.h"
 #include "flutter/shell/common/shell.h"
-#include "flutter/shell/common/shorebird.h"
+#include "flutter/shell/common/shorebird/shorebird.h"
 #include "flutter/shell/common/switches.h"
 #import "flutter/shell/platform/darwin/common/command_line.h"
 #import "flutter/shell/platform/darwin/ios/framework/Headers/FlutterViewController.h"
@@ -191,8 +191,9 @@ flutter::Settings FLTDefaultSettingsForBundle(NSBundle* bundle, NSProcessInfo* p
     // Note: we intentionally pass cache_path twice. We provide two different directories
     //   to ConfigureShorebird because Android differentiates between data that persists
     //   between releases and data that does not. iOS does not make this distinction.
-    flutter::ConfigureShorebird(cache_path, cache_path, settings, shorebirdYamlContents.UTF8String,
-                                appVersion.UTF8String, appBuildNumber.UTF8String);
+    flutter::Shorebird::ConfigureShorebird(cache_path, cache_path, settings,
+                                           shorebirdYamlContents.UTF8String, appVersion.UTF8String,
+                                           appBuildNumber.UTF8String);
   } else {
     NSLog(@"Failed to find shorebird.yaml, not starting updater.");
   }

@@ -1,0 +1,57 @@
+import("//flutter/common/config.gni")
+import("//flutter/testing/testing.gni")
+
+source_set("blobs_handle") {
+  sources = [
+    "blobs_handle.cc",
+    "blobs_handle.h",
+  ]
+
+  deps = [
+    "//flutter/fml",
+    "//flutter/runtime",
+    "//flutter/runtime:libdart",
+    "//flutter/shell/common",
+    "//third_party/skia",
+  ]
+}
+
+source_set("shorebird") {
+  sources = [
+    "shorebird.cc",
+    "shorebird.h",
+  ]
+
+  deps = [
+    ":blobs_handle",
+    "//flutter/fml",
+    "//flutter/runtime",
+    "//flutter/runtime:libdart",
+    "//flutter/shell/common",
+    "//third_party/skia",
+  ]
+
+  include_dirs = [ "//flutter/updater" ]
+}
+
+if (enable_unittests) {
+  test_fixtures("shorebird_fixtures") {
+    fixtures = []
+  }
+
+  executable("shorebird_unittests") {
+    testonly = true
+
+    sources = [ "blobs_handle_unittests.cc" ]
+
+    # This only includes blobs_handle and not shorebird because shorebird
+    # fails to link due to a missing updater lib.
+    deps = [
+      ":blobs_handle",
+      ":shorebird_fixtures",
+      "//flutter/runtime",
+      "//flutter/testing",
+      "//flutter/testing:fixture_test",
+    ]
+  }
+}
