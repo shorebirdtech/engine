@@ -11,6 +11,7 @@
 #include "flutter/testing/testing.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
+#include "testing/fixture_test.h"
 
 namespace flutter {
 namespace testing {
@@ -28,7 +29,7 @@ std::unique_ptr<BlobsHandle> MakeHandle(std::vector<std::string>& blobs) {
   return handle;
 }
 
-TEST(BlobsHandleTest, Reads) {
+TEST(BlobsHandle, Read) {
   std::vector<std::string> blobs = {"abc", "def", "ghi", "jkl"};
   std::unique_ptr<BlobsHandle> blobs_handle = MakeHandle(blobs);
 
@@ -48,7 +49,7 @@ TEST(BlobsHandleTest, Reads) {
   EXPECT_EQ(buffer[6], 0);
 }
 
-TEST(BlobsHandleTest, ReadsAfterSeekWithPositiveOffset) {
+TEST(BlobsHandle, ReadAfterSeekWithPositiveOffset) {
   std::vector<std::string> blobs = {"abc", "def", "ghi", "jkl"};
   std::unique_ptr<BlobsHandle> blobs_handle = MakeHandle(blobs);
 
@@ -70,7 +71,7 @@ TEST(BlobsHandleTest, ReadsAfterSeekWithPositiveOffset) {
   EXPECT_EQ(buffer[6], 0);
 }
 
-TEST(BlobsHandleTest, ReadsAfterSeekWithNegativeOffset) {
+TEST(BlobsHandle, ReadAfterSeekWithNegativeOffset) {
   std::vector<std::string> blobs = {"abc", "def", "ghi", "jkl"};
   std::unique_ptr<BlobsHandle> blobs_handle = MakeHandle(blobs);
 
@@ -102,7 +103,7 @@ TEST(BlobsHandleTest, ReadsAfterSeekWithNegativeOffset) {
   EXPECT_EQ(buffer[6], 0);
 }
 
-TEST(BlobsHandleTest, SeekPastEnd) {
+TEST(BlobsHandle, SeekPastEnd) {
   std::vector<std::string> blobs = {"abc", "def", "ghi", "jkl"};
   std::unique_ptr<BlobsHandle> blobs_handle = MakeHandle(blobs);
 
@@ -121,7 +122,7 @@ TEST(BlobsHandleTest, SeekPastEnd) {
   EXPECT_EQ(buffer[1], 'l');
 }
 
-TEST(BlobsHandleTest, SeekBeforeBeginning) {
+TEST(BlobsHandle, SeekBeforeBeginning) {
   std::vector<std::string> blobs = {"abc", "def", "ghi", "jkl"};
   std::unique_ptr<BlobsHandle> blobs_handle = MakeHandle(blobs);
 
@@ -137,7 +138,7 @@ TEST(BlobsHandleTest, SeekBeforeBeginning) {
   EXPECT_EQ(buffer[1], 'b');
 }
 
-TEST(BlobsHandleTest, SeekFromBeginning) {
+TEST(BlobsHandle, SeekFromBeginning) {
   std::vector<std::string> blobs = {"abc", "def", "ghi", "jkl"};
   std::unique_ptr<BlobsHandle> blobs_handle = MakeHandle(blobs);
 
@@ -156,7 +157,7 @@ TEST(BlobsHandleTest, SeekFromBeginning) {
   EXPECT_EQ(buffer[1], 'd');
 }
 
-TEST(BlobsHandleTest, SeekFromEnd) {
+TEST(BlobsHandle, SeekFromEnd) {
   std::vector<std::string> blobs = {"abc", "def", "ghi", "jkl"};
   std::unique_ptr<BlobsHandle> blobs_handle = MakeHandle(blobs);
 
@@ -170,7 +171,6 @@ TEST(BlobsHandleTest, SeekFromEnd) {
 
   EXPECT_EQ(buffer[0], 'k');
   EXPECT_EQ(buffer[1], 'l');
-  EXPECT_TRUE(false);
 }
 
 }  // namespace testing
