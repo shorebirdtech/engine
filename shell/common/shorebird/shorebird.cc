@@ -66,7 +66,7 @@ void SetBaseSnapshot(Settings& settings) {
 
 class FileCallbacksImpl {
  public:
-  static void* Open(const char* name, char mode);
+  static void* Open();
   static uintptr_t Read(void* file, uint8_t* buffer, uintptr_t length);
   static int64_t Seek(void* file, int64_t offset, int32_t whence);
   static void Close(void* file);
@@ -183,18 +183,7 @@ void Shorebird::ConfigureShorebird(std::string code_cache_path,
   }
 }
 
-void* FileCallbacksImpl::Open(const char* path, char mode) {
-  if (strcmp(path, (char*)SHOREBIRD_PATCH_BASE_FILENAME) != 0) {
-    FML_LOG(ERROR) << "Attempting to open unrecognized file: " << path;
-    return nullptr;
-  }
-
-  if (mode != 'r') {
-    FML_LOG(ERROR) << "Attempting to open file with mode other than 'r': "
-                   << mode;
-    return nullptr;
-  }
-
+void* FileCallbacksImpl::Open() {
   return BlobsHandle::createForSnapshots(*vm_snapshot, *isolate_snapshot)
       .release();
 }
