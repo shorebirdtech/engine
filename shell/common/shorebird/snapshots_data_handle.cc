@@ -1,4 +1,4 @@
-#include "flutter/shell/common/shorebird/blobs_handle.h"
+#include "flutter/shell/common/shorebird/snapshots_data_handle.h"
 
 #include "third_party/dart/runtime/include/dart_native_api.h"
 

@@ -1,10 +1,8 @@
-#include <_types/_uint8_t.h>
-#include <sys/_types/_size_t.h>
 #include <memory>
 #include <string>
 #include <vector>
 
-#include "flutter/shell/common/shorebird/blobs_handle.h"
+#include "flutter/shell/common/shorebird/snapshots_data_handle.h"
 
 #include "flutter/fml/mapping.h"
 #include "flutter/runtime/dart_snapshot.h"
@@ -16,7 +14,8 @@
 namespace flutter {
 namespace testing {
 
-std::unique_ptr<BlobsHandle> MakeHandle(std::vector<std::string>& blobs) {
+std::unique_ptr<SnapshotsDataHandle> MakeHandle(
+    std::vector<std::string>& blobs) {
   // Map the strings into non-owned mappings:
   std::vector<std::unique_ptr<fml::Mapping>> mappings = {};
   for (auto& blob : blobs) {
@@ -25,13 +24,14 @@ std::unique_ptr<BlobsHandle> MakeHandle(std::vector<std::string>& blobs) {
             reinterpret_cast<const uint8_t*>(blob.data()), blob.size());
     mappings.push_back(std::move(mapping));
   }
-  auto handle = std::make_unique<flutter::BlobsHandle>(std::move(mappings));
+  auto handle =
+      std::make_unique<flutter::SnapshotsDataHandle>(std::move(mappings));
   return handle;
 }
 
-TEST(BlobsHandle, Read) {
+TEST(SnapshotsDataHandle, Read) {
   std::vector<std::string> blobs = {"abc", "def", "ghi", "jkl"};
-  std::unique_ptr<BlobsHandle> blobs_handle = MakeHandle(blobs);
+  std::unique_ptr<SnapshotsDataHandle> blobs_handle = MakeHandle(blobs);
 
   const size_t buffer_size = 12;
   uint8_t buffer[buffer_size];
@@ -49,9 +49,9 @@ TEST(BlobsHandle, Read) {
   EXPECT_EQ(buffer[6], 0);
 }
 
-TEST(BlobsHandle, ReadAfterSeekWithPositiveOffset) {
+TEST(SnapshotsDataHandle, ReadAfterSeekWithPositiveOffset) {
   std::vector<std::string> blobs = {"abc", "def", "ghi", "jkl"};
-  std::unique_ptr<BlobsHandle> blobs_handle = MakeHandle(blobs);
+  std::unique_ptr<SnapshotsDataHandle> blobs_handle = MakeHandle(blobs);
 
   const size_t buffer_size = 20;
   uint8_t buffer[buffer_size];
@@ -71,9 +71,9 @@ TEST(BlobsHandle, ReadAfterSeekWithPositiveOffset) {
   EXPECT_EQ(buffer[6], 0);
 }
 
-TEST(BlobsHandle, ReadAfterSeekWithNegativeOffset) {
+TEST(SnapshotsDataHandle, ReadAfterSeekWithNegativeOffset) {
   std::vector<std::string> blobs = {"abc", "def", "ghi", "jkl"};
-  std::unique_ptr<BlobsHandle> blobs_handle = MakeHandle(blobs);
+  std::unique_ptr<SnapshotsDataHandle> blobs_handle = MakeHandle(blobs);
 
   const size_t buffer_size = 20;
   uint8_t buffer[buffer_size];
@@ -103,9 +103,9 @@ TEST(BlobsHandle, ReadAfterSeekWithNegativeOffset) {
   EXPECT_EQ(buffer[6], 0);
 }
 
-TEST(BlobsHandle, SeekPastEnd) {
+TEST(SnapshotsDataHandle, SeekPastEnd) {
   std::vector<std::string> blobs = {"abc", "def", "ghi", "jkl"};
-  std::unique_ptr<BlobsHandle> blobs_handle = MakeHandle(blobs);
+  std::unique_ptr<SnapshotsDataHandle> blobs_handle = MakeHandle(blobs);
 
   const size_t buffer_size = 20;
   uint8_t buffer[buffer_size];
@@ -122,9 +122,9 @@ TEST(BlobsHandle, SeekPastEnd) {
   EXPECT_EQ(buffer[1], 'l');
 }
 
-TEST(BlobsHandle, SeekBeforeBeginning) {
+TEST(SnapshotsDataHandle, SeekBeforeBeginning) {
   std::vector<std::string> blobs = {"abc", "def", "ghi", "jkl"};
-  std::unique_ptr<BlobsHandle> blobs_handle = MakeHandle(blobs);
+  std::unique_ptr<SnapshotsDataHandle> blobs_handle = MakeHandle(blobs);
 
   const size_t buffer_size = 20;
   uint8_t buffer[buffer_size];
@@ -138,9 +138,9 @@ TEST(BlobsHandle, SeekBeforeBeginning) {
   EXPECT_EQ(buffer[1], 'b');
 }
 
-TEST(BlobsHandle, SeekFromBeginning) {
+TEST(SnapshotsDataHandle, SeekFromBeginning) {
   std::vector<std::string> blobs = {"abc", "def", "ghi", "jkl"};
-  std::unique_ptr<BlobsHandle> blobs_handle = MakeHandle(blobs);
+  std::unique_ptr<SnapshotsDataHandle> blobs_handle = MakeHandle(blobs);
 
   const size_t buffer_size = 20;
   uint8_t buffer[buffer_size];
@@ -157,9 +157,9 @@ TEST(BlobsHandle, SeekFromBeginning) {
   EXPECT_EQ(buffer[1], 'd');
 }
 
-TEST(BlobsHandle, SeekFromEnd) {
+TEST(SnapshotsDataHandle, SeekFromEnd) {
   std::vector<std::string> blobs = {"abc", "def", "ghi", "jkl"};
-  std::unique_ptr<BlobsHandle> blobs_handle = MakeHandle(blobs);
+  std::unique_ptr<SnapshotsDataHandle> blobs_handle = MakeHandle(blobs);
 
   const size_t buffer_size = 20;
   uint8_t buffer[buffer_size];

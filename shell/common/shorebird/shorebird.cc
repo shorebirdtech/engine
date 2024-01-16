@@ -19,7 +19,7 @@
 #include "flutter/runtime/dart_snapshot.h"
 #include "flutter/runtime/dart_vm.h"
 #include "flutter/shell/common/shell.h"
-#include "flutter/shell/common/shorebird/blobs_handle.h"
+#include "flutter/shell/common/shorebird/snapshots_data_handle.h"
 #include "flutter/shell/common/switches.h"
 #include "fml/logging.h"
 #include "third_party/dart/runtime/include/dart_tools_api.h"
