@@ -12,7 +12,6 @@ source_set("blobs_handle") {
     "//flutter/runtime",
     "//flutter/runtime:libdart",
     "//flutter/shell/common",
-    "//third_party/skia",
   ]
 }
 
