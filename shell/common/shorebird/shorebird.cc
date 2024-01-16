@@ -183,24 +183,24 @@ void Shorebird::ConfigureShorebird(std::string code_cache_path,
 }
 
 void* FileCallbacksImpl::Open() {
-  return BlobsHandle::createForSnapshots(*vm_snapshot, *isolate_snapshot)
+  return SnapshotsDataHandle::createForSnapshots(*vm_snapshot,
+                                                 *isolate_snapshot)
       .release();
 }
 
 uintptr_t FileCallbacksImpl::Read(void* file,
                                   uint8_t* buffer,
                                   uintptr_t length) {
-  // Currently we only support blob handles.
-  return reinterpret_cast<BlobsHandle*>(file)->Read(buffer, length);
+  return reinterpret_cast<SnapshotsDataHandle*>(file)->Read(buffer, length);
 }
 
 int64_t FileCallbacksImpl::Seek(void* file, int64_t offset, int32_t whence) {
   // Currently we only support blob handles.
-  return reinterpret_cast<BlobsHandle*>(file)->Seek(offset, whence);
+  return reinterpret_cast<SnapshotsDataHandle*>(file)->Seek(offset, whence);
 }
 
 void FileCallbacksImpl::Close(void* file) {
-  delete reinterpret_cast<BlobsHandle*>(file);
+  delete reinterpret_cast<SnapshotsDataHandle*>(file);
 }
 
 }  // namespace flutter

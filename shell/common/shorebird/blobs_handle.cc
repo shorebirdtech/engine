@@ -4,19 +4,21 @@
 
 namespace flutter {
 
-static std::unique_ptr<fml::Mapping> DataBlob(const DartSnapshot& snapshot) {
+static std::unique_ptr<fml::Mapping> DataMapping(const DartSnapshot& snapshot) {
   auto ptr = snapshot.GetDataMapping();
   return std::make_unique<fml::NonOwnedMapping>(ptr,
                                                 Dart_SnapshotDataSize(ptr));
 }
 
-static std::unique_ptr<fml::Mapping> InstrBlob(const DartSnapshot& snapshot) {
+static std::unique_ptr<fml::Mapping> InstructionsMapping(
+    const DartSnapshot& snapshot) {
   auto ptr = snapshot.GetInstructionsMapping();
   return std::make_unique<fml::NonOwnedMapping>(ptr,
                                                 Dart_SnapshotInstrSize(ptr));
 }
 
-size_t BlobsHandle::FullSize() const {
+// The size of the snapshot data is the sum of the sizes of the blobs.
+size_t SnapshotsDataHandle::FullSize() const {
   size_t size = 0;
   for (const auto& blob : blobs_) {
     size += blob->GetSize();
@@ -24,15 +26,20 @@ size_t BlobsHandle::FullSize() const {
   return size;
 }
 
-size_t BlobsHandle::AbsoluteOffsetForIndex(BlobsIndex index) {
+// The offset into the snapshots data blobs as though they were a single
+// contiguous buffer.
+size_t SnapshotsDataHandle::AbsoluteOffsetForIndex(BlobsIndex index) {
   if (index.blob >= blobs_.size()) {
+    FML_LOG(WARNING) << "Blob index " << index.blob
+                     << " is larger than the number of blobs (" << blobs_.size()
+                     << "). Returning full size (" << FullSize() << ")";
     return FullSize();
   }
   if (index.offset > blobs_[index.blob]->GetSize()) {
-    FML_LOG(ERROR) << "Bad state, offset for blob " << index.blob << " ("
-                   << index.offset << ") is larger than the blob size ("
-                   << blobs_[index.blob]->GetSize()
-                   << "). Returning index start of next blob";
+    FML_LOG(WARNING) << "Offset for blob " << index.blob << " (" << index.offset
+                     << ") is larger than the blob size ("
+                     << blobs_[index.blob]->GetSize()
+                     << "). Returning index start of next blob";
     return AbsoluteOffsetForIndex({index.blob + 1, 0});
   }
   size_t offset = 0;
@@ -43,60 +50,53 @@ size_t BlobsHandle::AbsoluteOffsetForIndex(BlobsIndex index) {
   return offset;
 }
 
-BlobsIndex BlobsHandle::IndexForAbsoluteOffset(size_t offset) {
-  if (offset < 0) {
-    FML_LOG(ERROR) << "Asking for blobs index when absolute index is before "
-                      "the beginning of the blobs (offset:"
-                   << offset << ")";
-    FML_LOG(ERROR) << "Returning {0, 0}";
-    return {0, 0};
-  }
-
-  BlobsIndex index = {0, 0};
-  for (const auto& blob : blobs_) {
-    if (offset < blob->GetSize()) {
-      // The remaining offset is within this blob.
-      index.offset = offset;
-      break;
-    }
-
-    index.blob++;
-    offset -= blob->GetSize();
-  }
-  return index;
-}
-
-BlobsIndex BlobsHandle::IndexFromAbsoluteOffset(int64_t offset,
-                                                BlobsIndex start_index) {
+BlobsIndex SnapshotsDataHandle::IndexForAbsoluteOffset(int64_t offset,
+                                                       BlobsIndex start_index) {
   size_t start_offset = AbsoluteOffsetForIndex(start_index);
   if (offset < 0 && (size_t)-offset > start_offset) {
     // Seeking before the beginning of the blobs.
+    FML_LOG(WARNING)
+        << "Offset is before the beginning of SnapshotsData. Returning 0, 0";
     return {0, 0};
   }
 
   size_t dest_offset = start_offset + offset;
   if (dest_offset >= FullSize()) {
     // Seeking past the end of the blobs.
+    FML_LOG(WARNING) << "Target offset is past the end of SnapshotsData ("
+                     << dest_offset << ", blobs size:" << FullSize()
+                     << "). Returning last blob index and offset";
     return {blobs_.size(), blobs_.back()->GetSize()};
   }
 
-  return IndexForAbsoluteOffset(dest_offset);
+  BlobsIndex index = {0, 0};
+  for (const auto& blob : blobs_) {
+    if (dest_offset < blob->GetSize()) {
+      // The remaining offset is within this blob.
+      index.offset = dest_offset;
+      break;
+    }
+
+    index.blob++;
+    dest_offset -= blob->GetSize();
+  }
+  return index;
 }
 
-std::unique_ptr<BlobsHandle> BlobsHandle::createForSnapshots(
+std::unique_ptr<SnapshotsDataHandle> SnapshotsDataHandle::createForSnapshots(
     const DartSnapshot& vm_snapshot,
     const DartSnapshot& isolate_snapshot) {
   // This needs to match the order in which the blobs are written out in
   // analyze_snapshot
   std::vector<std::unique_ptr<fml::Mapping>> blobs;
-  blobs.push_back(DataBlob(vm_snapshot));
-  blobs.push_back(DataBlob(isolate_snapshot));
-  blobs.push_back(InstrBlob(vm_snapshot));
-  blobs.push_back(InstrBlob(isolate_snapshot));
-  return std::make_unique<BlobsHandle>(std::move(blobs));
+  blobs.push_back(DataMapping(vm_snapshot));
+  blobs.push_back(DataMapping(isolate_snapshot));
+  blobs.push_back(InstructionsMapping(vm_snapshot));
+  blobs.push_back(InstructionsMapping(isolate_snapshot));
+  return std::make_unique<SnapshotsDataHandle>(std::move(blobs));
 }
 
-uintptr_t BlobsHandle::Read(uint8_t* buffer, uintptr_t length) {
+uintptr_t SnapshotsDataHandle::Read(uint8_t* buffer, uintptr_t length) {
   uintptr_t bytes_read = 0;
   // Copy current blob from current offset and possibly into the next blob
   // until we have read length bytes.
@@ -124,7 +124,7 @@ uintptr_t BlobsHandle::Read(uint8_t* buffer, uintptr_t length) {
   return bytes_read;
 }
 
-int64_t BlobsHandle::Seek(int64_t offset, int32_t whence) {
+int64_t SnapshotsDataHandle::Seek(int64_t offset, int32_t whence) {
   BlobsIndex start_index;
   switch (whence) {
     case SEEK_CUR:
@@ -139,7 +139,7 @@ int64_t BlobsHandle::Seek(int64_t offset, int32_t whence) {
     default:
       FML_CHECK(false) << "Unrecognized whence value in Seek: " << whence;
   }
-  current_index_ = IndexFromAbsoluteOffset(offset, start_index);
+  current_index_ = IndexForAbsoluteOffset(offset, start_index);
   return current_index_.offset;
 }
 
