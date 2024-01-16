@@ -132,9 +132,8 @@ void FlutterMain::Init(JNIEnv* env,
   std::string version_string = fml::jni::JavaStringToString(env, version);
   std::string version_code_string =
       fml::jni::JavaStringToString(env, versionCode);
-  Shorebird::ConfigureShorebird(code_cache_path, app_storage_path, settings,
-                                shorebird_yaml, version_string,
-                                version_code_string);
+  ConfigureShorebird(code_cache_path, app_storage_path, settings,
+                     shorebird_yaml, version_string, version_code_string);
 #endif
 
   flutter::DartCallbackCache::LoadCacheFromDisk();

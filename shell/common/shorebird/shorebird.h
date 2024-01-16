@@ -5,15 +5,12 @@
 
 namespace flutter {
 
-class Shorebird {
- public:
-  static void ConfigureShorebird(std::string code_cache_path,
-                                 std::string app_storage_path,
-                                 flutter::Settings& settings,
-                                 const std::string& shorebird_yaml,
-                                 const std::string& version,
-                                 const std::string& version_code);
-};
+void ConfigureShorebird(std::string code_cache_path,
+                        std::string app_storage_path,
+                        flutter::Settings& settings,
+                        const std::string& shorebird_yaml,
+                        const std::string& version,
+                        const std::string& version_code);
 
 }  // namespace flutter
 
