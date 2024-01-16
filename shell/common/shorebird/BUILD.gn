@@ -28,7 +28,6 @@ source_set("shorebird") {
     "//flutter/runtime",
     "//flutter/runtime:libdart",
     "//flutter/shell/common",
-    "//third_party/skia",
   ]
 
   include_dirs = [ "//flutter/updater" ]

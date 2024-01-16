@@ -23,7 +23,6 @@
 #include "flutter/shell/common/switches.h"
 #include "fml/logging.h"
 #include "third_party/dart/runtime/include/dart_tools_api.h"
-#include "third_party/skia/include/core/SkFontMgr.h"
 
 #include "third_party/updater/library/include/updater.h"
 
