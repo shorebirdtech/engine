@@ -87,7 +87,7 @@ std::unique_ptr<SnapshotsDataHandle> SnapshotsDataHandle::createForSnapshots(
     const DartSnapshot& vm_snapshot,
     const DartSnapshot& isolate_snapshot) {
   // This needs to match the order in which the blobs are written out in
-  // analyze_snapshot
+  // analyze_snapshot --dump_blobs
   std::vector<std::unique_ptr<fml::Mapping>> blobs;
   blobs.push_back(DataMapping(vm_snapshot));
   blobs.push_back(DataMapping(isolate_snapshot));
