@@ -107,7 +107,7 @@ uintptr_t SnapshotsDataHandle::Read(uint8_t* buffer, uintptr_t length) {
     }
     intptr_t remaining_blob_length =
         blobs_[current_index_.blob]->GetSize() - current_index_.offset;
-    if (remaining_blob_length == 0) {
+    if (remaining_blob_length <= 0) {
       // We have read all bytes in this blob.
       current_index_.blob++;
       current_index_.offset = 0;
