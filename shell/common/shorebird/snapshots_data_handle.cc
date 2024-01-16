@@ -1,4 +1,5 @@
 #include "flutter/shell/common/shorebird/snapshots_data_handle.h"
+#include <sys/_types/_size_t.h>
 
 #include "third_party/dart/runtime/include/dart_native_api.h"
 
@@ -53,22 +54,20 @@ size_t SnapshotsDataHandle::AbsoluteOffsetForIndex(BlobsIndex index) {
 BlobsIndex SnapshotsDataHandle::IndexForAbsoluteOffset(int64_t offset,
                                                        BlobsIndex start_index) {
   size_t start_offset = AbsoluteOffsetForIndex(start_index);
-  if (offset < 0 && (size_t)-offset > start_offset) {
-    // Seeking before the beginning of the blobs.
-    FML_LOG(WARNING)
-        << "Offset is before the beginning of SnapshotsData. Returning 0, 0";
-    return {0, 0};
-  }
-
-  size_t dest_offset = start_offset + offset;
-  if (dest_offset >= FullSize()) {
-    // Seeking past the end of the blobs.
+  if (offset < 0) {
+    if ((size_t)abs(offset) > start_offset) {
+      FML_LOG(WARNING)
+          << "Offset is before the beginning of SnapshotsData. Returning 0, 0";
+      return {0, 0};
+    }
+  } else if (offset + start_offset >= FullSize()) {
     FML_LOG(WARNING) << "Target offset is past the end of SnapshotsData ("
-                     << dest_offset << ", blobs size:" << FullSize()
+                     << offset + start_offset << ", blobs size:" << FullSize()
                      << "). Returning last blob index and offset";
     return {blobs_.size(), blobs_.back()->GetSize()};
   }
 
+  size_t dest_offset = start_offset + offset;
   BlobsIndex index = {0, 0};
   for (const auto& blob : blobs_) {
     if (dest_offset < blob->GetSize()) {
