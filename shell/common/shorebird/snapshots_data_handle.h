@@ -38,7 +38,7 @@ class SnapshotsDataHandle {
   size_t AbsoluteOffsetForIndex(BlobsIndex index);
   BlobsIndex IndexForAbsoluteOffset(int64_t offset, BlobsIndex startIndex);
 
-  BlobsIndex current_index_;
+  BlobsIndex current_index_ = {0, 0};
   std::vector<std::unique_ptr<fml::Mapping>> blobs_;
 };
 
