@@ -22,7 +22,7 @@ class SnapshotsDataHandle {
   // This would ideally be private, but we need to be able to call it from the
   // static createForSnapshots method.
   explicit SnapshotsDataHandle(std::vector<std::unique_ptr<fml::Mapping>> blobs)
-      : current_index_({0, 0}), blobs_(std::move(blobs)) {}
+      : blobs_(std::move(blobs)) {}
 
   static std::unique_ptr<SnapshotsDataHandle> createForSnapshots(
       const DartSnapshot& vm_snapshot,
@@ -38,7 +38,7 @@ class SnapshotsDataHandle {
   size_t AbsoluteOffsetForIndex(BlobsIndex index);
   BlobsIndex IndexForAbsoluteOffset(int64_t offset, BlobsIndex startIndex);
 
-  BlobsIndex current_index_;
+  BlobsIndex current_index_ = {0, 0};
   std::vector<std::unique_ptr<fml::Mapping>> blobs_;
 };
 
