@@ -52,6 +52,7 @@ source_set("flutter_framework_source_arc") {
   deps = [
     ":flutter_framework_source",
     "//flutter/fml",
+    "//flutter/shell/common/shorebird",
     "//flutter/shell/platform/common:common_cpp_input",
     "//flutter/shell/platform/darwin/common:framework_common",
     "//flutter/third_party/icu",
@@ -202,9 +203,11 @@ source_set("flutter_framework_source") {
   }
 
   deps += [
+    "$dart_src/runtime/bin:elf_loader",
     "//flutter/fml",
     "//flutter/runtime",
     "//flutter/shell/common",
+    "//flutter/shell/common/shorebird",
     "//flutter/shell/platform/darwin/common",
     "//flutter/shell/platform/darwin/common:framework_common",
     "//flutter/shell/platform/embedder:embedder_as_internal_library",
@@ -216,6 +219,17 @@ source_set("flutter_framework_source") {
     ":ios_gpu_configuration_config",
     "//flutter:config",
   ]
+
+  if (target_cpu == "arm64") {
+    libs = [
+      "//third_party/updater/target/aarch64-apple-ios/release/libupdater.a",
+    ]
+  } else if (target_cpu == "x64") {
+    libs =
+        [ "//third_party/updater/target/x86_64-apple-ios/release/libupdater.a" ]
+  } else {
+    assert(false, "Unsupported target_cpu")
+  }
 
   frameworks = [
     "AudioToolbox.framework",

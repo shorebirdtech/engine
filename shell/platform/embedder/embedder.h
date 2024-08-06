@@ -2205,6 +2205,42 @@ typedef void (*FlutterLogMessageCallback)(const char* /* tag */,
 typedef struct _FlutterEngineAOTData* FlutterEngineAOTData;
 
 typedef struct {
+  /// The version of the app (e.g., 1.0.0).
+  ///
+  /// The string can be collected after the call to `FlutterEngineInitialize`
+  /// returns. The string must be NULL terminated.
+  const char* app_version;
+
+  /// The build number of the app (e.g., 1).
+  ///
+  /// The string can be collected after the call to `FlutterEngineInitialize`
+  /// returns. The string must be NULL terminated.
+  const char* app_build_number;
+
+  /// The text contents of the shorebird.yaml file bundled with the compiled
+  /// app. Note that this is _not_ the same as the shorebird.yaml that exists in
+  /// the user's project.
+  ///
+  /// The string can be collected after the call to `FlutterEngineInitialize`
+  /// returns. The string must be NULL terminated.
+  const char* shorebird_yaml_contents;
+
+  /// The path to the directory where Shorebird will store patches and state
+  /// data.
+  ///
+  /// The string can be collected after the call to `FlutterEngineInitialize`
+  /// returns. The string must be NULL terminated.
+  const char* cache_path;
+
+  /// The path to the executable file. This is a Mach-O executable file on
+  /// macOS.
+  ///
+  /// The string can be collected after the call to `FlutterEngineInitialize`
+  /// returns. The string must be NULL terminated.
+  const char* app_path;
+} ShorebirdFlutterProjectArgs;
+
+typedef struct {
   /// The size of this struct. Must be sizeof(FlutterProjectArgs).
   size_t struct_size;
   /// The path to the Flutter assets directory containing project assets. The
@@ -2503,6 +2539,9 @@ typedef struct {
   /// being registered on the framework side. The callback is invoked from
   /// a task posted to the platform thread.
   FlutterChannelUpdateCallback channel_update_callback;
+
+  /// Data used to initialize Shorebird as part of engine initialization.
+  ShorebirdFlutterProjectArgs shorebird_args;
 } FlutterProjectArgs;
 
 #ifndef FLUTTER_ENGINE_NO_PROTOTYPES
