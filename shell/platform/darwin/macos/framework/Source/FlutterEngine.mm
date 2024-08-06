@@ -10,6 +10,7 @@
 #include <vector>
 
 #include "flutter/common/constants.h"
+#include "flutter/fml/paths.h"
 #include "flutter/shell/platform/common/app_lifecycle_state.h"
 #include "flutter/shell/platform/common/engine_switches.h"
 #include "flutter/shell/platform/embedder/embedder.h"
@@ -678,6 +679,28 @@ static void SetThreadPriority(FlutterThreadPriority priority) {
     FlutterEngine* engine = (__bridge FlutterEngine*)user_data;
     [engine onVSync:baton];
   };
+
+  NSString* bundlePath =
+      [[NSBundle bundleWithURL:[NSBundle.mainBundle.privateFrameworksURL
+                                   URLByAppendingPathComponent:@"App.framework"]] bundlePath];
+  bundlePath = [bundlePath stringByAppendingString:@"/App"];
+  flutterArguments.shorebird_args.app_path = bundlePath.UTF8String;
+  NSString* assetsPath = _project.assetsPath;
+  NSURL* shorebirdYamlPath = [NSURL URLWithString:@"shorebird.yaml"
+                                    relativeToURL:[NSURL fileURLWithPath:assetsPath]];
+  NSString* shorebirdYamlContents = [NSString stringWithContentsOfURL:shorebirdYamlPath
+                                                             encoding:NSUTF8StringEncoding
+                                                                error:nil];
+  NSString* appVersion =
+      [NSBundle.mainBundle objectForInfoDictionaryKey:@"CFBundleShortVersionString"];
+  NSString* appBuildNumber = [NSBundle.mainBundle objectForInfoDictionaryKey:@"CFBundleVersion"];
+  flutterArguments.shorebird_args.app_version = appVersion.UTF8String;
+  flutterArguments.shorebird_args.app_build_number = appBuildNumber.UTF8String;
+
+  std::string cache_path =
+      fml::paths::JoinPaths({getenv("HOME"), "Library", "Application Support", "shorebird"});
+  flutterArguments.shorebird_args.cache_path = cache_path.c_str();
+  flutterArguments.shorebird_args.shorebird_yaml_contents = shorebirdYamlContents.UTF8String;
 
   FlutterRendererConfig rendererConfig = [_renderer createRendererConfig];
   FlutterEngineResult result = _embedderAPI.Initialize(
