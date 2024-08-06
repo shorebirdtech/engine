@@ -16,6 +16,11 @@ vars = {
   'llvm_git': 'https://llvm.googlesource.com',
   'skia_revision': '9d530bb0bcbfd571ee3d820fdd79ff859d61e2cd',
 
+  'dart_sdk_revision': '3454643cf5e49b394895fb73958c03f8b91d4ba1',
+  'dart_sdk_git': 'git@github.com:shorebirdtech/dart-sdk.git',
+  'updater_git': 'https://github.com/shorebirdtech/updater.git',
+  'updater_rev': 'bec79a4f8d384a11c059962634c18e90c4b37888',
+
   # WARNING: DO NOT EDIT canvaskit_cipd_instance MANUALLY
   # See `lib/web_ui/README.md` for how to roll CanvasKit to a new version.
   'canvaskit_cipd_instance': '61aeJQ9laGfEFF_Vlc_u0MCkqB6xb2hAYHRBxKH-Uw4C',
@@ -277,7 +282,7 @@ allowed_hosts = [
 ]
 
 deps = {
-  'src': 'https://github.com/flutter/buildroot.git' + '@' + '8c2d66fa4e6298894425f5bdd0591bc5b1154c53',
+  'src': 'https://github.com/shorebirdtech/buildroot.git' + '@' + '46523859970f6137e6bcb88ebda2504da9a07738',
 
   'src/flutter/third_party/depot_tools':
   Var('chromium_git') + '/chromium/tools/depot_tools.git' + '@' + '580b4ff3f5cd0dcaa2eacda28cefe0f45320e8f7',
@@ -339,7 +344,7 @@ deps = {
   #  Var('flutter_git') + '/third_party/protobuf-gn' + '@' + Var('dart_protobuf_gn_rev'),
 
   'src/flutter/third_party/dart':
-   Var('dart_git') + '/sdk.git' + '@' + Var('dart_revision'),
+   Var('dart_sdk_git') + '@' + Var('dart_sdk_revision'),
 
   # WARNING: Unused Dart dependencies in the list below till "WARNING:" marker are removed automatically - see create_updated_flutter_deps.py.
 
@@ -637,6 +642,9 @@ deps = {
 
   'src/flutter/third_party/ocmock':
    Var('flutter_git') + '/third_party/ocmock' + '@' +  Var('ocmock_rev'),
+
+  'src/third_party/updater':
+   Var('updater_git') + '@' +  Var('updater_rev'),
 
   'src/flutter/third_party/libjpeg-turbo/src':
    Var('flutter_git') + '/third_party/libjpeg-turbo' + '@' + '0fb821f3b2e570b2783a94ccd9a2fb1f4916ae9f',
