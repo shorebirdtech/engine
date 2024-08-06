@@ -12,9 +12,10 @@
 #include <syslog.h>
 
 #include "flutter/common/constants.h"
+#include "flutter/fml/paths.h"
+#include "flutter/shell/common/shorebird/shorebird.h"
 #include "flutter/shell/common/switches.h"
 #import "flutter/shell/platform/darwin/common/command_line.h"
-#include "flutter/shell/platform/darwin/common/shorebird.h"
 
 FLUTTER_ASSERT_ARC
 
