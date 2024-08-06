@@ -313,7 +313,7 @@ if (host_os == "win") {
 # target above.
 if (host_os == "win") {
   _analyze_snapshot_target =
-      "//third_party/dart/runtime/bin:analyze_snapshot($host_toolchain)"
+      "$dart_src/runtime/bin:analyze_snapshot($host_toolchain)"
 
   copy("analyze_snapshot") {
     deps = [ _analyze_snapshot_target ]
