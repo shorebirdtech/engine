@@ -15,6 +15,10 @@ vars = {
   'skia_git': 'https://skia.googlesource.com',
   'llvm_git': 'https://llvm.googlesource.com',
   'skia_revision': '6062afaa505bf7e6c727a20cafe4c7bee0f02df8',
+  "dart_sdk_revision": "ddb0f3b6c38b1774a3413c2c159b124be6bd1df7",
+  "dart_sdk_git": "git@github.com:shorebirdtech/dart-sdk.git",
+  "updater_git": "https://github.com/shorebirdtech/updater.git",
+  "updater_rev": "78c84e5bf72266da07df536e98d431782cb39a6d",
 
   # WARNING: DO NOT EDIT canvaskit_cipd_instance MANUALLY
   # See `lib/web_ui/README.md` for how to roll CanvasKit to a new version.
@@ -258,26 +262,24 @@ vars = {
   'fuchsia_gn_sdk_version': 'tHRCseOuPnZ5H4a7kb4Zl6YQ2rhEDWIzcEX3G9NPFhkC',
 }
 
-gclient_gn_args_file = 'src/flutter/third_party/dart/build/config/gclient_args.gni'
-gclient_gn_args = [
-  'checkout_llvm'
-]
+gclient_gn_args_file = "src/flutter/third_party/dart/build/config/gclient_args.gni"
+gclient_gn_args = ["checkout_llvm"]
 
 # Only these hosts are allowed for dependencies in this DEPS file.
 # If you need to add a new host, contact chrome infrastructure team.
 allowed_hosts = [
-  'boringssl.googlesource.com',
-  'chrome-infra-packages.appspot.com',
-  'chromium.googlesource.com',
-  'dart.googlesource.com',
-  'flutter.googlesource.com',
-  'llvm.googlesource.com',
-  'skia.googlesource.com',
-  'swiftshader.googlesource.com',
+    "boringssl.googlesource.com",
+    "chrome-infra-packages.appspot.com",
+    "chromium.googlesource.com",
+    "dart.googlesource.com",
+    "flutter.googlesource.com",
+    "llvm.googlesource.com",
+    "skia.googlesource.com",
+    "swiftshader.googlesource.com",
 ]
 
 deps = {
-  'src': 'https://github.com/flutter/buildroot.git' + '@' + 'f85c3be4bf808add6ba867b8ff7943fd235b7b5e',
+  'src': 'https://github.com/shorebirdtech/buildroot.git' + '@' + '0871724ee87bb289e2c66ef9e3109e563c248650',
 
   'src/flutter/third_party/depot_tools':
   Var('chromium_git') + '/chromium/tools/depot_tools.git' + '@' + '580b4ff3f5cd0dcaa2eacda28cefe0f45320e8f7',
@@ -339,7 +341,7 @@ deps = {
   #  Var('flutter_git') + '/third_party/protobuf-gn' + '@' + Var('dart_protobuf_gn_rev'),
 
   'src/flutter/third_party/dart':
-   Var('dart_git') + '/sdk.git' + '@' + Var('dart_revision'),
+   Var('dart_sdk_git') + '@' + Var('dart_sdk_revision'),
 
   # WARNING: Unused Dart dependencies in the list below till "WARNING:" marker are removed automatically - see create_updated_flutter_deps.py.
 
@@ -631,6 +633,9 @@ deps = {
 
   'src/flutter/third_party/ocmock':
    Var('flutter_git') + '/third_party/ocmock' + '@' +  Var('ocmock_rev'),
+
+  'src/flutter/third_party/updater':
+   Var('updater_git') + '@' + Var('updater_rev'),
 
   'src/flutter/third_party/libjpeg-turbo/src':
    Var('flutter_git') + '/third_party/libjpeg-turbo' + '@' + '0fb821f3b2e570b2783a94ccd9a2fb1f4916ae9f',
@@ -1018,157 +1023,165 @@ deps = {
 }
 
 recursedeps = [
-  'src/flutter/third_party/vulkan-deps',
+    "src/flutter/third_party/vulkan-deps",
 ]
 
 hooks = [
-  {
-    # Generate the Dart SDK's .dart_tool/package_confg.json file.
-    'name': 'Generate .dart_tool/package_confg.json',
-    'pattern': '.',
-    'action': ['python3', 'src/flutter/third_party/dart/tools/generate_package_config.py'],
-  },
-  {
-    # Generate the sdk/version file.
-    'name': 'Generate sdk/version',
-    'pattern': '.',
-    'action': ['python3', 'src/flutter/third_party/dart/tools/generate_sdk_version_file.py'],
-  },
-  {
-    # Update the Windows toolchain if necessary.
-    'name': 'win_toolchain',
-    'condition': 'download_windows_deps',
-    'pattern': '.',
-    'action': ['python3', 'src/build/vs_toolchain.py', 'update'],
-  },
-  {
-    'name': 'dia_dll',
-    'pattern': '.',
-    'condition': 'download_windows_deps',
-    'action': [
-      'python3',
-      'src/flutter/tools/dia_dll.py',
-    ],
-  },
-  {
-    'name': 'linux_sysroot_x64',
-    'pattern': '.',
-    'condition': 'download_linux_deps',
-    'action': [
-      'python3',
-      'src/build/linux/sysroot_scripts/install-sysroot.py',
-      '--arch=x64'],
-  },
-  {
-    'name': 'linux_sysroot_arm64',
-    'pattern': '.',
-    'condition': 'download_linux_deps',
-    'action': [
-      'python3',
-      'src/build/linux/sysroot_scripts/install-sysroot.py',
-      '--arch=arm64'],
-  },
-  {
-    'name': 'pub get --offline',
-    'pattern': '.',
-    'action': [
-      'python3',
-      'src/flutter/tools/pub_get_offline.py',
-    ]
-  },
-  {
-    'name': 'Download Fuchsia SDK',
-    'pattern': '.',
-    'condition': 'download_fuchsia_deps and download_fuchsia_sdk',
-    'action': [
-      'python3',
-      'src/flutter/tools/download_fuchsia_sdk.py',
-      '--fail-loudly',
-      '--verbose',
-      '--host-os',
-      Var('host_os'),
-      '--fuchsia-sdk-path',
-      Var('fuchsia_sdk_path'),
-    ]
-  },
-  {
-    'name': 'Activate Emscripten SDK',
-    'pattern': '.',
-    'condition': 'download_emsdk',
-    'action': [
-      'python3',
-      'src/flutter/tools/activate_emsdk.py',
-    ]
-  },
-  {
-    'name': 'Setup githooks',
-    'pattern': '.',
-    'condition': 'setup_githooks',
-    'action': [
-      'python3',
-      'src/flutter/tools/githooks/setup.py',
-    ]
-  },
-  {
-    'name': 'impeller-cmake-example submodules',
-    'pattern': '.',
-    'condition': 'download_impeller_cmake_example',
-    'action': [
-      'python3',
-      'src/flutter/ci/impeller_cmake_build_test.py',
-      '--path',
-      'flutter/third_party/impeller-cmake-example',
-      '--setup',
-    ]
-  },
-  {
-    'name': 'Download Fuchsia system images',
-    'pattern': '.',
-    'condition': 'run_fuchsia_emu',
-    'action': [
-      'env',
-      'DOWNLOAD_FUCHSIA_SDK={download_fuchsia_sdk}',
-      'FUCHSIA_SDK_PATH={fuchsia_sdk_path}',
-      'python3',
-      'src/flutter/tools/fuchsia/with_envs.py',
-      'src/flutter/tools/fuchsia/test_scripts/update_product_bundles.py',
-      'terminal.x64,terminal.qemu-arm64',
-    ]
-  },
-  # The following two scripts check if they are running in the LUCI
-  # environment, and do nothing if so. This is because Xcode is not yet
-  # installed in CI when these hooks are run.
-  {
-    'name': 'Find the iOS device SDKs',
-    'pattern': '.',
-    'condition': 'host_os == "mac"',
-    'action': [
-      'python3',
-      'src/build/config/ios/ios_sdk.py',
-      # This cleans up entries under flutter/prebuilts for this script and the
-      # following script.
-      '--as-gclient-hook'
-    ]
-  },
-  {
-    'name': 'Find the macOS SDK',
-    'pattern': '.',
-    'condition': 'host_os == "mac"',
-    'action': [
-      'python3',
-      'src/build/mac/find_sdk.py',
-      '--as-gclient-hook',
-      Var('mac_sdk_min')
-    ]
-  },
-  {
-    'name': 'Generate Fuchsia GN build rules',
-    'pattern': '.',
-    'condition': 'download_fuchsia_deps',
-    'action': [
-      'python3',
-      'src/flutter/tools/fuchsia/with_envs.py',
-      'src/flutter/tools/fuchsia/test_scripts/gen_build_defs.py',
-    ],
-  },
+    {
+        # Generate the Dart SDK's .dart_tool/package_confg.json file.
+        "name": "Generate .dart_tool/package_confg.json",
+        "pattern": ".",
+        "action": [
+            "python3",
+            "src/flutter/third_party/dart/tools/generate_package_config.py",
+        ],
+    },
+    {
+        # Generate the sdk/version file.
+        "name": "Generate sdk/version",
+        "pattern": ".",
+        "action": [
+            "python3",
+            "src/flutter/third_party/dart/tools/generate_sdk_version_file.py",
+        ],
+    },
+    {
+        # Update the Windows toolchain if necessary.
+        "name": "win_toolchain",
+        "condition": "download_windows_deps",
+        "pattern": ".",
+        "action": ["python3", "src/build/vs_toolchain.py", "update"],
+    },
+    {
+        "name": "dia_dll",
+        "pattern": ".",
+        "condition": "download_windows_deps",
+        "action": [
+            "python3",
+            "src/flutter/tools/dia_dll.py",
+        ],
+    },
+    {
+        "name": "linux_sysroot_x64",
+        "pattern": ".",
+        "condition": "download_linux_deps",
+        "action": [
+            "python3",
+            "src/build/linux/sysroot_scripts/install-sysroot.py",
+            "--arch=x64",
+        ],
+    },
+    {
+        "name": "linux_sysroot_arm64",
+        "pattern": ".",
+        "condition": "download_linux_deps",
+        "action": [
+            "python3",
+            "src/build/linux/sysroot_scripts/install-sysroot.py",
+            "--arch=arm64",
+        ],
+    },
+    {
+        "name": "pub get --offline",
+        "pattern": ".",
+        "action": [
+            "python3",
+            "src/flutter/tools/pub_get_offline.py",
+        ],
+    },
+    {
+        "name": "Download Fuchsia SDK",
+        "pattern": ".",
+        "condition": "download_fuchsia_deps and download_fuchsia_sdk",
+        "action": [
+            "python3",
+            "src/flutter/tools/download_fuchsia_sdk.py",
+            "--fail-loudly",
+            "--verbose",
+            "--host-os",
+            Var("host_os"),
+            "--fuchsia-sdk-path",
+            Var("fuchsia_sdk_path"),
+        ],
+    },
+    {
+        "name": "Activate Emscripten SDK",
+        "pattern": ".",
+        "condition": "download_emsdk",
+        "action": [
+            "python3",
+            "src/flutter/tools/activate_emsdk.py",
+        ],
+    },
+    {
+        "name": "Setup githooks",
+        "pattern": ".",
+        "condition": "setup_githooks",
+        "action": [
+            "python3",
+            "src/flutter/tools/githooks/setup.py",
+        ],
+    },
+    {
+        "name": "impeller-cmake-example submodules",
+        "pattern": ".",
+        "condition": "download_impeller_cmake_example",
+        "action": [
+            "python3",
+            "src/flutter/ci/impeller_cmake_build_test.py",
+            "--path",
+            "flutter/third_party/impeller-cmake-example",
+            "--setup",
+        ],
+    },
+    {
+        "name": "Download Fuchsia system images",
+        "pattern": ".",
+        "condition": "run_fuchsia_emu",
+        "action": [
+            "env",
+            "DOWNLOAD_FUCHSIA_SDK={download_fuchsia_sdk}",
+            "FUCHSIA_SDK_PATH={fuchsia_sdk_path}",
+            "python3",
+            "src/flutter/tools/fuchsia/with_envs.py",
+            "src/flutter/tools/fuchsia/test_scripts/update_product_bundles.py",
+            "terminal.x64,terminal.qemu-arm64",
+        ],
+    },
+    # The following two scripts check if they are running in the LUCI
+    # environment, and do nothing if so. This is because Xcode is not yet
+    # installed in CI when these hooks are run.
+    {
+        "name": "Find the iOS device SDKs",
+        "pattern": ".",
+        "condition": 'host_os == "mac"',
+        "action": [
+            "python3",
+            "src/build/config/ios/ios_sdk.py",
+            # This cleans up entries under flutter/prebuilts for this script and the
+            # following script.
+            "--as-gclient-hook",
+        ],
+    },
+    {
+        "name": "Find the macOS SDK",
+        "pattern": ".",
+        "condition": 'host_os == "mac"',
+        "action": [
+            "python3",
+            "src/build/mac/find_sdk.py",
+            "--as-gclient-hook",
+            Var("mac_sdk_min"),
+        ],
+    },
+    {
+        "name": "Generate Fuchsia GN build rules",
+        "pattern": ".",
+        "condition": "download_fuchsia_deps",
+        "action": [
+            "python3",
+            "src/flutter/tools/fuchsia/with_envs.py",
+            "src/flutter/tools/fuchsia/test_scripts/gen_build_defs.py",
+        ],
+    },
 ]
