@@ -11,6 +11,14 @@
     _binary_icudtl_dat_size;
     InternalFlutterGpu*;
     kInternalFlutterGpu*;
+    shorebird_init;
+    shorebird_active_path;
+    shorebird_active_patch_number;
+    shorebird_free_string;
+    shorebird_check_for_update;
+    shorebird_update;
+    shorebird_next_boot_patch_number;
+    shorebird_current_boot_patch_number;
   local:
     *;
 };
