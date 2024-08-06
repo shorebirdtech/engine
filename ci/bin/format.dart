@@ -539,7 +539,9 @@ class JavaFormatChecker extends FormatChecker {
       javaVersion = await _getJavaVersion();
     } on ProcessRunnerException {
       error('Cannot run Java, skipping Java file formatting!');
-      return const <String>[_javaFormatErrorString];
+      // https://github.com/flutter/flutter/issues/152968
+      // return const <String>[_javaFormatErrorString];
+      return [];
     }
     try {
       javaFormatVersion = await _getGoogleJavaFormatVersion();
