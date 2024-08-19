@@ -8,6 +8,7 @@
 # to list the dependency's destination directory.
 
 vars = {
+<<<<<<< HEAD
   "chromium_git": "https://chromium.googlesource.com",
   "swiftshader_git": "https://swiftshader.googlesource.com",
   "dart_git": "https://dart.googlesource.com",
@@ -19,6 +20,20 @@ vars = {
   "dart_sdk_git": "git@github.com:shorebirdtech/dart-sdk.git",
   "updater_git": "https://github.com/shorebirdtech/updater.git",
   "updater_rev": "bec79a4f8d384a11c059962634c18e90c4b37888",
+=======
+  'chromium_git': 'https://chromium.googlesource.com',
+  'swiftshader_git': 'https://swiftshader.googlesource.com',
+  'dart_git': 'https://dart.googlesource.com',
+  'flutter_git': 'https://flutter.googlesource.com',
+  'skia_git': 'https://skia.googlesource.com',
+  'llvm_git': 'https://llvm.googlesource.com',
+  'skia_revision': '9d530bb0bcbfd571ee3d820fdd79ff859d61e2cd',
+  'dart_sdk_revision': '416581a64b8139d4c881f684d5540b199a63f5ff',
+  'dart_sdk_git': 'git@github.com:shorebirdtech/dart-sdk.git',
+  'updater_git': 'https://github.com/shorebirdtech/updater.git',
+  'updater_rev': 'bec79a4f8d384a11c059962634c18e90c4b37888',
+
+>>>>>>> 25a251a229 (chore: roll Dart to `416581a64b8139d4c881f684d5540b199a63f5ff` (exclude static field load from op_subgraph_hash))
   # WARNING: DO NOT EDIT canvaskit_cipd_instance MANUALLY
   # See `lib/web_ui/README.md` for how to roll CanvasKit to a new version.
   "canvaskit_cipd_instance": "61aeJQ9laGfEFF_Vlc_u0MCkqB6xb2hAYHRBxKH-Uw4C",
