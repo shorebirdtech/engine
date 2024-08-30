@@ -452,14 +452,6 @@ Shell::Shell(DartVMRef vm,
       volatile_path_tracker_(std::move(volatile_path_tracker)),
       weak_factory_gpu_(nullptr),
       weak_factory_(this) {
-// FIXME: This is probably the wrong place to hook into.
-#if FML_OS_ANDROID || FML_OS_IOS
-  if (!vm_) {
-    shorebird_report_launch_failure();
-  } else {
-    shorebird_report_launch_success();
-  }
-#endif
   FML_CHECK(!settings.enable_software_rendering || !settings.enable_impeller)
       << "Software rendering is incompatible with Impeller.";
   if (!settings.enable_impeller && settings.warn_on_impeller_opt_out) {
@@ -697,9 +689,15 @@ void Shell::RunEngine(
             }
             auto run_result = weak_engine->Run(std::move(run_configuration));
             if (run_result == flutter::Engine::RunStatus::Failure) {
+#if FML_OS_ANDROID || FML_OS_IOS
+              shorebird_report_launch_failure();
+#endif
               FML_LOG(ERROR) << "Could not launch engine with configuration.";
             }
 
+#if FML_OS_ANDROID || FML_OS_IOS
+            shorebird_report_launch_success();
+#endif
             result(run_result);
           }));
 }
