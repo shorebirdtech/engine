@@ -125,8 +125,11 @@ void ConfigureShorebird(std::string code_cache_path,
     app_parameters.original_libapp_paths_size = c_paths.size();
 
     // shorebird_init copies from app_parameters and shorebirdYaml.
-    shorebird_init(&app_parameters, ShorebirdFileCallbacks(),
-                   shorebird_yaml.c_str());
+    auto init_result = shorebird_init(&app_parameters, ShorebirdFileCallbacks(),
+                                      shorebird_yaml.c_str());
+    if (!init_result) {
+      return;
+    }
   }
 
   // We've decided not to support synchronous updates on launch for now.
