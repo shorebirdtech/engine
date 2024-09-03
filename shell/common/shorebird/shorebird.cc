@@ -104,6 +104,7 @@ void ConfigureShorebird(std::string code_cache_path,
                        {shorebird_updater_dir_name},
                        fml::FilePermission::kReadWrite);
 
+  bool init_result;
   // Using a block to make AppParameters lifetime explicit.
   {
     AppParameters app_parameters;
@@ -125,11 +126,8 @@ void ConfigureShorebird(std::string code_cache_path,
     app_parameters.original_libapp_paths_size = c_paths.size();
 
     // shorebird_init copies from app_parameters and shorebirdYaml.
-    auto init_result = shorebird_init(&app_parameters, ShorebirdFileCallbacks(),
-                                      shorebird_yaml.c_str());
-    if (!init_result) {
-      return;
-    }
+    init_result = shorebird_init(&app_parameters, ShorebirdFileCallbacks(),
+                                 shorebird_yaml.c_str());
   }
 
   // We've decided not to support synchronous updates on launch for now.
@@ -159,15 +157,18 @@ void ConfigureShorebird(std::string code_cache_path,
     settings.application_library_path.clear();
     settings.application_library_path.emplace_back(active_path);
 #endif
-
-    // Once start_update_thread is called, the next_boot_patch* functions may
-    // change their return values if the shorebird_report_launch_failed
-    // function is called.
-    shorebird_report_launch_start();
-
   } else {
     FML_LOG(INFO) << "Shorebird updater: no active patch.";
   }
+
+  if (!init_result) {
+    return;
+  }
+
+  // Once start_update_thread is called, the next_boot_patch* functions may
+  // change their return values if the shorebird_report_launch_failed
+  // function is called.
+  shorebird_report_launch_start();
 
   if (shorebird_should_auto_update()) {
     FML_LOG(INFO) << "Starting Shorebird update";
