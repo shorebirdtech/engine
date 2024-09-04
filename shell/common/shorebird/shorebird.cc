@@ -104,6 +104,7 @@ void ConfigureShorebird(std::string code_cache_path,
                        {shorebird_updater_dir_name},
                        fml::FilePermission::kReadWrite);
 
+  bool init_result;
   // Using a block to make AppParameters lifetime explicit.
   {
     AppParameters app_parameters;
@@ -125,8 +126,8 @@ void ConfigureShorebird(std::string code_cache_path,
     app_parameters.original_libapp_paths_size = c_paths.size();
 
     // shorebird_init copies from app_parameters and shorebirdYaml.
-    shorebird_init(&app_parameters, ShorebirdFileCallbacks(),
-                   shorebird_yaml.c_str());
+    init_result = shorebird_init(&app_parameters, ShorebirdFileCallbacks(),
+                                 shorebird_yaml.c_str());
   }
 
   // We've decided not to support synchronous updates on launch for now.
@@ -156,15 +157,27 @@ void ConfigureShorebird(std::string code_cache_path,
     settings.application_library_path.clear();
     settings.application_library_path.emplace_back(active_path);
 #endif
-
-    // Once start_update_thread is called, the next_boot_patch* functions may
-    // change their return values if the shorebird_report_launch_failed
-    // function is called.
-    shorebird_report_launch_start();
-
   } else {
     FML_LOG(INFO) << "Shorebird updater: no active patch.";
   }
+
+  // We are careful only to report a launch start in the case where it's the first time we've
+  // configured shorebird this process.  Otherwise we could end up in a case where
+  // we report a launch start, but never a completion (e.g. from package:flutter_work_manager
+  // which sometimes creates a FlutterEngine (and thus configures shorebird) but never
+  // runs it.  The proper fix for this is probably to move the launch_start() call to be later
+  // in the lifecycle (when the snapshot is loaded and run, rather than when FlutterEngine
+  // is initialized).  This "hack" will still have a problem where FlutterEngine is initialized
+  // but never run before the app is quit, could still cause us to suddenly mark-bad a patch
+  // that was never actually attempted to launch.
+  if (!init_result) {
+    return;
+  }
+
+  // Once start_update_thread is called, the next_boot_patch* functions may
+  // change their return values if the shorebird_report_launch_failed
+  // function is called.
+  shorebird_report_launch_start();
 
   if (shorebird_should_auto_update()) {
     FML_LOG(INFO) << "Starting Shorebird update";
