@@ -14,8 +14,13 @@ vars = {
   'flutter_git': 'https://flutter.googlesource.com',
   'skia_git': 'https://skia.googlesource.com',
   'llvm_git': 'https://llvm.googlesource.com',
+<<<<<<< HEAD
   'skia_revision': '93461bed7394e3c554125b0c50b00fb81eea42c6',
   'dart_sdk_revision': 'b3655c25683f0592d8fa25193ebf0cd89ec020f0',
+=======
+  'skia_revision': '9d530bb0bcbfd571ee3d820fdd79ff859d61e2cd',
+  'dart_sdk_revision': 'f1e0dd2d4abd6d85364690b69478db3def378349',
+>>>>>>> c062a1ec9d (chore: roll Dart to `f1e0dd2d4abd6d85364690b69478db3def378349` (rebase on 3.5.2))
   'dart_sdk_git': 'git@github.com:shorebirdtech/dart-sdk.git',
   'updater_git': 'https://github.com/shorebirdtech/updater.git',
   'updater_rev': 'ee3f5ec669a190759b046bfdddf73cf136d22bf5',
