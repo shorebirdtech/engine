@@ -161,6 +161,15 @@ void ConfigureShorebird(std::string code_cache_path,
     FML_LOG(INFO) << "Shorebird updater: no active patch.";
   }
 
+  // We are careful only to report a launch start in the case where it's the first time we've
+  // configured shorebird this process.  Otherwise we could end up in a case where
+  // we report a launch start, but never a completion (e.g. from package:flutter_work_manager
+  // which sometimes creates a FlutterEngine (and thus configures shorebird) but never
+  // runs it.  The proper fix for this is probably to move the launch_start() call to be later
+  // in the lifecycle (when the snapshot is loaded and run, rather than when FlutterEngine
+  // is initialized).  This "hack" will still have a problem where FlutterEngine is initialized
+  // but never run before the app is quit, could still cause us to suddenly mark-bad a patch
+  // that was never actually attempted to launch.
   if (!init_result) {
     return;
   }
