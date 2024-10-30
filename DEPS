@@ -18,7 +18,7 @@ vars = {
   'dart_sdk_revision': 'b3655c25683f0592d8fa25193ebf0cd89ec020f0',
   'dart_sdk_git': 'git@github.com:shorebirdtech/dart-sdk.git',
   'updater_git': 'https://github.com/shorebirdtech/updater.git',
-  'updater_rev': '5ace5b84f59fdda01eb18b7ad7999c08600b4d47',
+  'updater_rev': '8e7ec5a9b61a2e03b029f7ec7d245e75960b4ebf',
 
   # WARNING: DO NOT EDIT canvaskit_cipd_instance MANUALLY
   # See `lib/web_ui/README.md` for how to roll CanvasKit to a new version.
