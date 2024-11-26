@@ -10,10 +10,14 @@
 #include <vector>
 
 #include "flutter/common/constants.h"
+#include "flutter/fml/paths.h"
+#include "flutter/shell/common/shorebird/shorebird.h"
+#include "flutter/shell/common/switches.h"
 #include "flutter/shell/platform/common/app_lifecycle_state.h"
 #include "flutter/shell/platform/common/engine_switches.h"
 #include "flutter/shell/platform/embedder/embedder.h"
 
+#import "flutter/shell/platform/darwin/common/command_line.h"
 #import "flutter/shell/platform/darwin/common/framework/Source/FlutterBinaryMessengerRelay.h"
 #import "flutter/shell/platform/darwin/macos/framework/Headers/FlutterAppDelegate.h"
 #import "flutter/shell/platform/darwin/macos/framework/Source/FlutterAppDelegate_Internal.h"
@@ -579,6 +583,7 @@ static void SetThreadPriority(FlutterThreadPriority priority) {
 }
 
 - (BOOL)runWithEntrypoint:(NSString*)entrypoint {
+  NSLog(@"runWithEntrypoint: %@", entrypoint);
   if (self.running) {
     return NO;
   }
@@ -600,13 +605,21 @@ static void SetThreadPriority(FlutterThreadPriority priority) {
     switches.push_back("--enable-impeller=true");
   }
 
+  // print contents of switches
+  for (std::string switchStr : switches) {
+    NSLog(@"Switch: %@", switchStr);
+  }
+
   std::transform(switches.begin(), switches.end(), std::back_inserter(argv),
                  [](const std::string& arg) -> const char* { return arg.c_str(); });
 
   std::vector<const char*> dartEntrypointArgs;
   for (NSString* argument in [_project dartEntrypointArguments]) {
+    NSLog(@"Adding dart entrypoint argument: %@", argument);
     dartEntrypointArgs.push_back([argument UTF8String]);
   }
+
+  NSLog(@"_project.ICUDataPath: %@", _project.ICUDataPath);
 
   FlutterProjectArgs flutterArguments = {};
   flutterArguments.struct_size = sizeof(FlutterProjectArgs);
@@ -673,6 +686,7 @@ static void SetThreadPriority(FlutterThreadPriority priority) {
     [engine onVSync:baton];
   };
 
+  // NSLog(@"Flutter arguments: %@", flutterArguments);
   FlutterRendererConfig rendererConfig = [_renderer createRendererConfig];
   FlutterEngineResult result = _embedderAPI.Initialize(
       FLUTTER_ENGINE_VERSION, &rendererConfig, &flutterArguments, (__bridge void*)(self), &_engine);
@@ -700,6 +714,42 @@ static void SetThreadPriority(FlutterThreadPriority priority) {
   // Send the initial user settings such as brightness and text scale factor
   // to the engine.
   [self sendInitialSettings];
+
+  // FIXME: This may not be the correct path (e.g., should it include the organization id?)
+  // See
+  // https://developer.apple.com/library/archive/documentation/FileManagement/Conceptual/FileSystemProgrammingGuide/FileSystemOverview/FileSystemOverview.html#//apple_ref/doc/uid/TP40010672-CH2-SW13
+  // /private/var/mobile/Containers/Data/Application/264477BF-6E38-47C9-AAD9-532BB842F197/Library/Application
+  // Support/shorebird/shorebird_updater
+  auto command_line = flutter::CommandLineFromNSProcessInfo([NSProcessInfo processInfo]);
+  auto settings = flutter::SettingsFromCommandLine(command_line);
+
+  settings.application_library_path.push_back(_project.assetsPath.UTF8String);
+
+  NSString* assetsPath = _project.assetsPath;
+  NSLog(@"ASSET PATH %@", assetsPath);
+
+  std::string cache_path =
+      fml::paths::JoinPaths({getenv("HOME"), "Library/Application Support/shorebird"});
+  NSURL* shorebirdYamlPath = [NSURL URLWithString:@"shorebird.yaml"
+                                    relativeToURL:[NSURL fileURLWithPath:assetsPath]];
+  NSString* appVersion =
+      [NSBundle.mainBundle objectForInfoDictionaryKey:@"CFBundleShortVersionString"];
+  NSString* appBuildNumber = [NSBundle.mainBundle objectForInfoDictionaryKey:@"CFBundleVersion"];
+  NSString* shorebirdYamlContents = [NSString stringWithContentsOfURL:shorebirdYamlPath
+                                                             encoding:NSUTF8StringEncoding
+                                                                error:nil];
+  if (shorebirdYamlContents != nil) {
+    NSLog(@"Configuring shorebird...");
+    // Note: we intentionally pass cache_path twice. We provide two different directories
+    //   to ConfigureShorebird because Android differentiates between data that persists
+    //   between releases and data that does not. iOS does not make this distinction.
+    flutter::ConfigureShorebird(cache_path, cache_path, settings, shorebirdYamlContents.UTF8String,
+                                appVersion.UTF8String, appBuildNumber.UTF8String);
+    NSLog(@"Configured shorebird");
+  } else {
+    NSLog(@"Failed to find shorebird.yaml, not starting updater.");
+  }
+
   return YES;
 }
 
