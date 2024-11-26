@@ -610,11 +610,8 @@ static void SetThreadPriority(FlutterThreadPriority priority) {
 
   std::vector<const char*> dartEntrypointArgs;
   for (NSString* argument in [_project dartEntrypointArguments]) {
-    NSLog(@"Adding dart entrypoint argument: %@", argument);
     dartEntrypointArgs.push_back([argument UTF8String]);
   }
-
-  NSLog(@"_project.ICUDataPath: %@", _project.ICUDataPath);
 
   FlutterProjectArgs flutterArguments = {};
   flutterArguments.struct_size = sizeof(FlutterProjectArgs);
@@ -718,7 +715,11 @@ static void SetThreadPriority(FlutterThreadPriority priority) {
   auto command_line = flutter::CommandLineFromNSProcessInfo([NSProcessInfo processInfo]);
   auto settings = flutter::SettingsFromCommandLine(command_line);
 
-  settings.application_library_path.push_back(_project.assetsPath.UTF8String);
+  NSString* bundlePath =
+      [[NSBundle bundleWithURL:[NSBundle.mainBundle.privateFrameworksURL
+                                   URLByAppendingPathComponent:@"App.framework"]] bundlePath];
+  NSLog(@"In FlutterEngine.mm, adding bundlePath %@ to application_library_path", bundlePath);
+  settings.application_library_path.push_back([bundlePath UTF8String]);
 
   NSString* assetsPath = _project.assetsPath;
   NSLog(@"ASSET PATH %@", assetsPath);

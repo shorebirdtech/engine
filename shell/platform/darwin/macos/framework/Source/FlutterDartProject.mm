@@ -32,15 +32,20 @@ static NSString* const kAppBundleIdentifier = @"io.flutter.flutter.app";
 }
 
 - (instancetype)initWithPrecompiledDartBundle:(NSBundle*)bundle {
+  NSLog(@"initting dart project with bundle: %@", bundle);
   self = [super init];
   NSAssert(self, @"Super init cannot be nil");
 
   _dartBundle = bundle ?: FLTFrameworkBundleWithIdentifier(kAppBundleIdentifier);
   if (_dartBundle == nil) {
+    NSLog(@"Failed to find bundle with identifier \"%@\"", kAppBundleIdentifier);
     // The bundle isn't loaded and can't be found by bundle ID. Find it by path.
     _dartBundle = [NSBundle bundleWithURL:[NSBundle.mainBundle.privateFrameworksURL
                                               URLByAppendingPathComponent:@"App.framework"]];
   }
+
+  NSLog(@"_dartBundle is %@", _dartBundle);
+
   if (!_dartBundle.isLoaded) {
     [_dartBundle load];
   }
