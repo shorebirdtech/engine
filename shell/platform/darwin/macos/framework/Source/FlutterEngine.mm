@@ -605,11 +605,6 @@ static void SetThreadPriority(FlutterThreadPriority priority) {
     switches.push_back("--enable-impeller=true");
   }
 
-  // print contents of switches
-  for (std::string switchStr : switches) {
-    NSLog(@"Switch: %@", switchStr);
-  }
-
   std::transform(switches.begin(), switches.end(), std::back_inserter(argv),
                  [](const std::string& arg) -> const char* { return arg.c_str(); });
 
