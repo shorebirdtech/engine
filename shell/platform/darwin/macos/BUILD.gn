@@ -145,7 +145,7 @@ source_set("flutter_framework_source") {
     ]
   } else if (target_cpu == "x64") {
     libs = [
-      "//third_party/updater/target/x86_64-apple-darwin/release/libupdater.a"
+      "//third_party/updater/target/x86_64-apple-darwin/release/libupdater.a",
     ]
   } else {
     assert(false, "Unsupported target_cpu")
