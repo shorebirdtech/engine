@@ -130,7 +130,7 @@ void ConfigureShorebird(std::string code_cache_path,
     // shorebird_init copies from app_parameters and shorebirdYaml.
     init_result = shorebird_init(&app_parameters, ShorebirdFileCallbacks(),
                                  shorebird_yaml.c_str());
-    FML_LOG(ERROR) << "init_result is " << init_result;
+    FML_LOG(ERROR) << "Shorebird updater: init_result is " << init_result;
   }
 
   // We've decided not to support synchronous updates on launch for now.
@@ -139,11 +139,13 @@ void ConfigureShorebird(std::string code_cache_path,
   // within Dart, including updating as part of login, etc.
   // https://github.com/shorebirdtech/shorebird/issues/950
 
-  // We only set the base snapshot on iOS for now.
+  // We only set the base snapshot on iOS and macOS for now.
+  FML_LOG(ERROR) << "Shorebird updater: Setting base snapshot";
 #if FML_OS_IOS || FML_OS_MACOSX
   SetBaseSnapshot(settings);
 #endif
 
+  FML_LOG(ERROR) << "Shorebird updater: Getting next boot patch path";
   char* c_active_path = shorebird_next_boot_patch_path();
   if (c_active_path != NULL) {
     std::string active_path = c_active_path;
