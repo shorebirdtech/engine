@@ -704,11 +704,13 @@ static void SetThreadPriority(FlutterThreadPriority priority) {
   FlutterEngineResult result = _embedderAPI.Initialize(
       FLUTTER_ENGINE_VERSION, &rendererConfig, &flutterArguments, (__bridge void*)(self), &_engine);
   if (result != kSuccess) {
+    NSLog(@"Failed to initialize Flutter engine: error %d", result);
     return NO;
   }
 
   result = _embedderAPI.RunInitialized(_engine);
   if (result != kSuccess) {
+    NSLog(@"Failed to run an initialized engine: error %d", result);
     return NO;
   }
 
