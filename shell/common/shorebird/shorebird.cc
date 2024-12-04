@@ -89,8 +89,6 @@ void ConfigureShorebird(std::string code_cache_path,
                         const std::string& shorebird_yaml,
                         const std::string& version,
                         const std::string& version_code) {
-  FML_LOG(ERROR) << "In ConfigureShorebird";
-
   // If you are crashing here, you probably are running Shorebird in a Debug
   // config, where the AOT snapshot won't be linked into the process, and thus
   // lookups will fail.  Change your Scheme to Release to fix:
