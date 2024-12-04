@@ -584,7 +584,6 @@ static void SetThreadPriority(FlutterThreadPriority priority) {
 }
 
 - (BOOL)runWithEntrypoint:(NSString*)entrypoint {
-  NSLog(@"runWithEntrypoint: %@", entrypoint);
   if (self.running) {
     return NO;
   }
