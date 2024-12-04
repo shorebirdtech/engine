@@ -57,9 +57,10 @@ static std::shared_ptr<const fml::Mapping> SearchMapping(
     const std::vector<std::string>& native_library_path,
     const char* native_library_symbol_name,
     bool is_executable) {
-#if FML_OS_IOS
+#if FML_OS_IOS || FML_OS_MACOSX
   // Detect when we're trying to load a Shorebird patch.
-  auto patch_path = native_library_path.front();
+  auto patch_path =
+      native_library_path.size() > 0 ? native_library_path.front() : "";
   bool is_patch = patch_path.find(".vmcode") != std::string::npos;
   if (is_patch) {
     // We use this terrible hack to load in the patch and then extract the
@@ -141,7 +142,7 @@ static std::shared_ptr<const fml::Mapping> SearchMapping(
       }
     }
 
-#if FML_OS_IOS
+#if FML_OS_IOS || FML_OS_MACOSX
   }  // !is_patch
 #endif
 

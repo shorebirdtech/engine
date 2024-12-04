@@ -50,6 +50,7 @@ extern const intptr_t kPlatformStrongDillSize;
 #include "flutter/fml/paths.h"
 #include "flutter/fml/trace_event.h"
 #include "flutter/shell/common/rasterizer.h"
+#include "flutter/shell/common/shorebird/shorebird.h"
 #include "flutter/shell/common/switches.h"
 #include "flutter/shell/platform/embedder/embedder.h"
 #include "flutter/shell/platform/embedder/embedder_engine.h"
@@ -2165,6 +2166,20 @@ FlutterEngineResult FlutterEngineInitialize(size_t version,
         kInvalidArguments,
         "Could not infer the Flutter project to run from given arguments.");
   }
+
+  // Begin shorebird
+  if (args->shorebird_yaml_contents) {
+    FML_LOG(INFO) << "[shorebird] Shorebird YAML contents: "
+                  << args->shorebird_yaml_contents;
+    FML_LOG(INFO) << "Appending application library path: " << args->app_path;
+    settings.application_library_path.push_back(args->app_path);
+    flutter::ConfigureShorebird(args->cache_path, args->cache_path, settings,
+                                args->shorebird_yaml_contents,
+                                args->app_version, args->app_build_number);
+  } else {
+    FML_LOG(INFO) << "[shorebird] No shorebird YAML contents provided.";
+  }
+  // End shorebird
 
   // Create the engine but don't launch the shell or run the root isolate.
   auto embedder_engine = std::make_unique<flutter::EmbedderEngine>(

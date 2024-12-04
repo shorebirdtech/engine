@@ -4,9 +4,11 @@
 #include <cstddef>
 #include <memory>
 #include <optional>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
+#include "dart_api.h"
 #include "flutter/fml/command_line.h"
 #include "flutter/fml/file.h"
 #include "flutter/fml/macros.h"
@@ -21,6 +23,7 @@
 #include "flutter/shell/common/shell.h"
 #include "flutter/shell/common/shorebird/snapshots_data_handle.h"
 #include "flutter/shell/common/switches.h"
+#include "flutter/shell/platform/embedder/embedder.h"
 #include "fml/logging.h"
 #include "third_party/dart/runtime/include/dart_tools_api.h"
 
@@ -130,7 +133,6 @@ void ConfigureShorebird(std::string code_cache_path,
     // shorebird_init copies from app_parameters and shorebirdYaml.
     init_result = shorebird_init(&app_parameters, ShorebirdFileCallbacks(),
                                  shorebird_yaml.c_str());
-    FML_LOG(ERROR) << "Shorebird updater: init_result is " << init_result;
   }
 
   // We've decided not to support synchronous updates on launch for now.
@@ -139,19 +141,16 @@ void ConfigureShorebird(std::string code_cache_path,
   // within Dart, including updating as part of login, etc.
   // https://github.com/shorebirdtech/shorebird/issues/950
 
-  // We only set the base snapshot on iOS and macOS for now.
-  FML_LOG(ERROR) << "Shorebird updater: Setting base snapshot";
+  // We only set the base snapshot on iOS for now.
 #if FML_OS_IOS || FML_OS_MACOSX
   SetBaseSnapshot(settings);
 #endif
 
-  FML_LOG(ERROR) << "Shorebird updater: Getting next boot patch path";
   char* c_active_path = shorebird_next_boot_patch_path();
   if (c_active_path != NULL) {
     std::string active_path = c_active_path;
     shorebird_free_string(c_active_path);
-    FML_LOG(ERROR) << "Shorebird updater: active path: " << active_path;
-    // FML_LOG(INFO) << "Shorebird updater: active path: " << active_path;
+    FML_LOG(INFO) << "Shorebird updater: active path: " << active_path;
 
 #if FML_OS_IOS || FML_OS_MACOSX
     // On iOS we add the patch to the front of the list instead of clearing
@@ -164,8 +163,7 @@ void ConfigureShorebird(std::string code_cache_path,
     settings.application_library_path.emplace_back(active_path);
 #endif
   } else {
-    FML_LOG(ERROR) << "Shorebird updater: no active patch.";
-    // FML_LOG(INFO) << "Shorebird updater: no active patch.";
+    FML_LOG(INFO) << "Shorebird updater: no active patch.";
   }
 
   // We are careful only to report a launch start in the case where it's the
@@ -185,18 +183,14 @@ void ConfigureShorebird(std::string code_cache_path,
   // Once start_update_thread is called, the next_boot_patch* functions may
   // change their return values if the shorebird_report_launch_failed
   // function is called.
-  FML_LOG(ERROR) << "Shorebird reporting launch start";
   shorebird_report_launch_start();
 
   if (shorebird_should_auto_update()) {
-    FML_LOG(ERROR) << "Starting Shorebird update";
-    // FML_LOG(INFO) << "Starting Shorebird update";
+    FML_LOG(INFO) << "Starting Shorebird update";
     shorebird_start_update_thread();
   } else {
-    FML_LOG(ERROR)
+    FML_LOG(INFO)
         << "Shorebird auto_update disabled, not checking for updates.";
-    // FML_LOG(INFO)
-    //     << "Shorebird auto_update disabled, not checking for updates.";
   }
 }
 

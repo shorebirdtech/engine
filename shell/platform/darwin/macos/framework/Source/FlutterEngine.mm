@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #import "flutter/shell/platform/darwin/macos/framework/Headers/FlutterEngine.h"
+#include <Foundation/Foundation.h>
 #import "flutter/shell/platform/darwin/macos/framework/Source/FlutterEngine_Internal.h"
 
 #include <algorithm>
@@ -678,18 +679,37 @@ static void SetThreadPriority(FlutterThreadPriority priority) {
     [engine onVSync:baton];
   };
 
-  // NSLog(@"Flutter arguments: %@", flutterArguments);
+  NSString* bundlePath =
+      [[NSBundle bundleWithURL:[NSBundle.mainBundle.privateFrameworksURL
+                                   URLByAppendingPathComponent:@"App.framework"]] bundlePath];
+  bundlePath = [bundlePath stringByAppendingString:@"/App"];
+  flutterArguments.app_path = bundlePath.UTF8String;
+  NSString* assetsPath = _project.assetsPath;
+  NSURL* shorebirdYamlPath = [NSURL URLWithString:@"shorebird.yaml"
+                                    relativeToURL:[NSURL fileURLWithPath:assetsPath]];
+  NSString* shorebirdYamlContents = [NSString stringWithContentsOfURL:shorebirdYamlPath
+                                                             encoding:NSUTF8StringEncoding
+                                                                error:nil];
+  NSString* appVersion =
+      [NSBundle.mainBundle objectForInfoDictionaryKey:@"CFBundleShortVersionString"];
+  NSString* appBuildNumber = [NSBundle.mainBundle objectForInfoDictionaryKey:@"CFBundleVersion"];
+  flutterArguments.app_version = appVersion.UTF8String;
+  flutterArguments.app_build_number = appBuildNumber.UTF8String;
+
+  std::string cache_path =
+      fml::paths::JoinPaths({getenv("HOME"), "Library/Application Support/shorebird"});
+  flutterArguments.cache_path = cache_path.c_str();
+  flutterArguments.shorebird_yaml_contents = shorebirdYamlContents.UTF8String;
+
   FlutterRendererConfig rendererConfig = [_renderer createRendererConfig];
   FlutterEngineResult result = _embedderAPI.Initialize(
       FLUTTER_ENGINE_VERSION, &rendererConfig, &flutterArguments, (__bridge void*)(self), &_engine);
   if (result != kSuccess) {
-    NSLog(@"Failed to initialize Flutter engine: error %d", result);
     return NO;
   }
 
   result = _embedderAPI.RunInitialized(_engine);
   if (result != kSuccess) {
-    NSLog(@"Failed to run an initialized engine: error %d", result);
     return NO;
   }
 
@@ -706,45 +726,6 @@ static void SetThreadPriority(FlutterThreadPriority priority) {
   // Send the initial user settings such as brightness and text scale factor
   // to the engine.
   [self sendInitialSettings];
-
-  // FIXME: This may not be the correct path (e.g., should it include the organization id?)
-  // See
-  // https://developer.apple.com/library/archive/documentation/FileManagement/Conceptual/FileSystemProgrammingGuide/FileSystemOverview/FileSystemOverview.html#//apple_ref/doc/uid/TP40010672-CH2-SW13
-  // /private/var/mobile/Containers/Data/Application/264477BF-6E38-47C9-AAD9-532BB842F197/Library/Application
-  // Support/shorebird/shorebird_updater
-  auto command_line = flutter::CommandLineFromNSProcessInfo([NSProcessInfo processInfo]);
-  auto settings = flutter::SettingsFromCommandLine(command_line);
-
-  NSString* bundlePath =
-      [[NSBundle bundleWithURL:[NSBundle.mainBundle.privateFrameworksURL
-                                   URLByAppendingPathComponent:@"App.framework"]] bundlePath];
-  NSLog(@"In FlutterEngine.mm, adding bundlePath %@ to application_library_path", bundlePath);
-  settings.application_library_path.push_back([bundlePath UTF8String]);
-
-  NSString* assetsPath = _project.assetsPath;
-  NSLog(@"ASSET PATH %@", assetsPath);
-
-  std::string cache_path =
-      fml::paths::JoinPaths({getenv("HOME"), "Library/Application Support/shorebird"});
-  NSURL* shorebirdYamlPath = [NSURL URLWithString:@"shorebird.yaml"
-                                    relativeToURL:[NSURL fileURLWithPath:assetsPath]];
-  NSString* appVersion =
-      [NSBundle.mainBundle objectForInfoDictionaryKey:@"CFBundleShortVersionString"];
-  NSString* appBuildNumber = [NSBundle.mainBundle objectForInfoDictionaryKey:@"CFBundleVersion"];
-  NSString* shorebirdYamlContents = [NSString stringWithContentsOfURL:shorebirdYamlPath
-                                                             encoding:NSUTF8StringEncoding
-                                                                error:nil];
-  if (shorebirdYamlContents != nil) {
-    NSLog(@"Configuring shorebird...");
-    // Note: we intentionally pass cache_path twice. We provide two different directories
-    //   to ConfigureShorebird because Android differentiates between data that persists
-    //   between releases and data that does not. iOS does not make this distinction.
-    flutter::ConfigureShorebird(cache_path, cache_path, settings, shorebirdYamlContents.UTF8String,
-                                appVersion.UTF8String, appBuildNumber.UTF8String);
-    NSLog(@"Configured shorebird");
-  } else {
-    NSLog(@"Failed to find shorebird.yaml, not starting updater.");
-  }
 
   return YES;
 }

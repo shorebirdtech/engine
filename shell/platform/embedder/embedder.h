@@ -2434,6 +2434,16 @@ typedef struct {
   /// being registered on the framework side. The callback is invoked from
   /// a task posted to the platform thread.
   FlutterChannelUpdateCallback channel_update_callback;
+
+  const char* app_version;
+  const char* app_build_number;
+
+  const char* shorebird_yaml_contents;
+
+  const char* cache_path;
+
+  const char* app_path;
+
 } FlutterProjectArgs;
 
 #ifndef FLUTTER_ENGINE_NO_PROTOTYPES
