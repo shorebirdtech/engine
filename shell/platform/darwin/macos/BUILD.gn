@@ -120,8 +120,8 @@ source_set("flutter_framework_source") {
   sources += _flutter_framework_headers
 
   deps = [
-    "$dart_src/runtime/bin:elf_loader",
     ":macos_gpu_configuration",
+    "$dart_src/runtime/bin:elf_loader",
     "//flutter/flow:flow",
     "//flutter/fml",
     "//flutter/shell/common",
