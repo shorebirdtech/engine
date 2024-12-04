@@ -2169,9 +2169,6 @@ FlutterEngineResult FlutterEngineInitialize(size_t version,
 
   // Begin shorebird
   if (args->shorebird_yaml_contents) {
-    FML_LOG(INFO) << "[shorebird] Shorebird YAML contents: "
-                  << args->shorebird_yaml_contents;
-    FML_LOG(INFO) << "Appending application library path: " << args->app_path;
     settings.application_library_path.push_back(args->app_path);
     flutter::ConfigureShorebird(args->cache_path, args->cache_path, settings,
                                 args->shorebird_yaml_contents,
