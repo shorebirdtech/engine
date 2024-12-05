@@ -18,6 +18,7 @@ source_set("snapshots_data_handle") {
 source_set("shorebird") {
   sources = [
     "shorebird.cc",
+    "shorebird.h",
   ]
 
   deps = [
@@ -26,6 +27,7 @@ source_set("shorebird") {
     "//flutter/runtime",
     "//flutter/runtime:libdart",
     "//flutter/shell/common",
+    "//flutter/shell/platform/embedder:embedder_headers"
   ]
 
   include_dirs = [ "//flutter/updater" ]
