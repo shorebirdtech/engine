@@ -723,7 +723,6 @@ static void SetThreadPriority(FlutterThreadPriority priority) {
   // Send the initial user settings such as brightness and text scale factor
   // to the engine.
   [self sendInitialSettings];
-
   return YES;
 }
 
