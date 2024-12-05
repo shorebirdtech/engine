@@ -2168,11 +2168,9 @@ FlutterEngineResult FlutterEngineInitialize(size_t version,
   }
 
   // Begin shorebird
-  if (args->shorebird_yaml_contents) {
-    settings.application_library_path.push_back(args->app_path);
-    flutter::ConfigureShorebird(args->cache_path, args->cache_path, settings,
-                                args->shorebird_yaml_contents,
-                                args->app_version, args->app_build_number);
+  if (args->shorebird_args.shorebird_yaml_contents) {
+    settings.application_library_path.push_back(args->shorebird_args.app_path);
+    flutter::ConfigureShorebird(args->shorebird_args, settings);
   } else {
     FML_LOG(INFO) << "[shorebird] No shorebird YAML contents provided.";
   }

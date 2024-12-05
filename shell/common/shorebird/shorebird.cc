@@ -80,6 +80,13 @@ FileCallbacks ShorebirdFileCallbacks() {
   };
 }
 
+void ConfigureShorebird(const ShorebirdFlutterProjectArgs& args,
+                        flutter::Settings& settings) {
+  ConfigureShorebird(args.cache_path, args.app_path, settings,
+                     args.shorebird_yaml_contents, args.app_version,
+                     args.app_build_number);
+}
+
 void ConfigureShorebird(std::string code_cache_path,
                         std::string app_storage_path,
                         Settings& settings,

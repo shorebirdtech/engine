@@ -18,7 +18,6 @@ source_set("snapshots_data_handle") {
 source_set("shorebird") {
   sources = [
     "shorebird.cc",
-    "shorebird.h",
   ]
 
   deps = [

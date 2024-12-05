@@ -678,7 +678,7 @@ static void SetThreadPriority(FlutterThreadPriority priority) {
       [[NSBundle bundleWithURL:[NSBundle.mainBundle.privateFrameworksURL
                                    URLByAppendingPathComponent:@"App.framework"]] bundlePath];
   bundlePath = [bundlePath stringByAppendingString:@"/App"];
-  flutterArguments.app_path = bundlePath.UTF8String;
+  flutterArguments.shorebird_args.app_path = bundlePath.UTF8String;
   NSString* assetsPath = _project.assetsPath;
   NSURL* shorebirdYamlPath = [NSURL URLWithString:@"shorebird.yaml"
                                     relativeToURL:[NSURL fileURLWithPath:assetsPath]];
@@ -688,13 +688,13 @@ static void SetThreadPriority(FlutterThreadPriority priority) {
   NSString* appVersion =
       [NSBundle.mainBundle objectForInfoDictionaryKey:@"CFBundleShortVersionString"];
   NSString* appBuildNumber = [NSBundle.mainBundle objectForInfoDictionaryKey:@"CFBundleVersion"];
-  flutterArguments.app_version = appVersion.UTF8String;
-  flutterArguments.app_build_number = appBuildNumber.UTF8String;
+  flutterArguments.shorebird_args.app_version = appVersion.UTF8String;
+  flutterArguments.shorebird_args.app_build_number = appBuildNumber.UTF8String;
 
   std::string cache_path =
       fml::paths::JoinPaths({getenv("HOME"), "Library", "Application Support", "shorebird"});
-  flutterArguments.cache_path = cache_path.c_str();
-  flutterArguments.shorebird_yaml_contents = shorebirdYamlContents.UTF8String;
+  flutterArguments.shorebird_args.cache_path = cache_path.c_str();
+  flutterArguments.shorebird_args.shorebird_yaml_contents = shorebirdYamlContents.UTF8String;
 
   FlutterRendererConfig rendererConfig = [_renderer createRendererConfig];
   FlutterEngineResult result = _embedderAPI.Initialize(

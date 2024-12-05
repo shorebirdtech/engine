@@ -2,8 +2,12 @@
 #define FLUTTER_SHELL_COMMON_SHOREBIRD_SHOREBIRD_H_
 
 #include "flutter/common/settings.h"
+#include "shell/platform/embedder/embedder.h"
 
 namespace flutter {
+
+void ConfigureShorebird(const ShorebirdFlutterProjectArgs& args,
+                        flutter::Settings& settings);
 
 void ConfigureShorebird(std::string code_cache_path,
                         std::string app_storage_path,
