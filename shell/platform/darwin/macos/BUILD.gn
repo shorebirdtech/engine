@@ -137,18 +137,6 @@ source_set("flutter_framework_source") {
 
   public_configs = [ "//flutter:config" ]
 
-  if (target_cpu == "arm64") {
-    libs = [
-      "//third_party/updater/target/aarch64-apple-darwin/release/libupdater.a",
-    ]
-  } else if (target_cpu == "x64") {
-    libs = [
-      "//third_party/updater/target/x86_64-apple-darwin/release/libupdater.a",
-    ]
-  } else {
-    assert(false, "Unsupported target_cpu")
-  }
-
   defines = [
     "FLUTTER_FRAMEWORK",
     "FLUTTER_ENGINE_NO_PROTOTYPES",
