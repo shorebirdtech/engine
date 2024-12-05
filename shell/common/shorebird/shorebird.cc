@@ -4,11 +4,9 @@
 #include <cstddef>
 #include <memory>
 #include <optional>
-#include <type_traits>
 #include <utility>
 #include <vector>
 
-#include "dart_api.h"
 #include "flutter/fml/command_line.h"
 #include "flutter/fml/file.h"
 #include "flutter/fml/macros.h"
