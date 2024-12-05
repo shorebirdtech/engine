@@ -692,7 +692,7 @@ static void SetThreadPriority(FlutterThreadPriority priority) {
   flutterArguments.app_build_number = appBuildNumber.UTF8String;
 
   std::string cache_path =
-      fml::paths::JoinPaths({getenv("HOME"), "Library/Application Support/shorebird"});
+      fml::paths::JoinPaths({getenv("HOME"), "Library", "Application Support", "shorebird"});
   flutterArguments.cache_path = cache_path.c_str();
   flutterArguments.shorebird_yaml_contents = shorebirdYamlContents.UTF8String;
 

@@ -2436,22 +2436,37 @@ typedef struct {
   FlutterChannelUpdateCallback channel_update_callback;
 
   /// The version of the app (e.g., 1.0.0). Used by Shorebird.
+  ///
+  /// The string can be collected after the call to `FlutterEngineInitialize`
+  /// returns. The string must be NULL terminated.
   const char* app_version;
 
   /// The build number of the app (e.g., 1). Used by Shorebird.
+  ///
+  /// The string can be collected after the call to `FlutterEngineInitialize`
+  /// returns. The string must be NULL terminated.
   const char* app_build_number;
 
   /// The text contents of the shorebird.yaml file bundled with the compiled
   /// app. Note that this is _not_ the same as the shorebird.yaml that exists in
   /// the user's project. Used by Shorebird.
+  ///
+  /// The string can be collected after the call to `FlutterEngineInitialize`
+  /// returns. The string must be NULL terminated.
   const char* shorebird_yaml_contents;
 
   /// The path to the directory where Shorebird will store patches and state
   /// data.
+  ///
+  /// The string can be collected after the call to `FlutterEngineInitialize`
+  /// returns. The string must be NULL terminated.
   const char* cache_path;
 
   /// The path to the executable file. This is a Mach-O executable file on
   /// macOS. Used by Shorebird.
+  ///
+  /// The string can be collected after the call to `FlutterEngineInitialize`
+  /// returns. The string must be NULL terminated.
   const char* app_path;
 
 } FlutterProjectArgs;
