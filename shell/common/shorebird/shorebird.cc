@@ -23,7 +23,6 @@
 #include "flutter/shell/common/shell.h"
 #include "flutter/shell/common/shorebird/snapshots_data_handle.h"
 #include "flutter/shell/common/switches.h"
-#include "flutter/shell/platform/embedder/embedder.h"
 #include "fml/logging.h"
 #include "third_party/dart/runtime/include/dart_tools_api.h"
 
