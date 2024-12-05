@@ -162,6 +162,19 @@ source_set("common") {
 
     deps += [ "//flutter/impeller" ]
   }
+
+  # Needed to compile flutter_tester for macOS.
+  if (host_os == "mac" && target_os == "mac") {
+    if (target_cpu == "arm64") {
+      libs = [
+        "//third_party/updater/target/aarch64-apple-darwin/release/libupdater.a",
+      ]
+    } else if (target_cpu == "x64") {
+      libs = [
+        "//third_party/updater/target/x86_64-apple-darwin/release/libupdater.a",
+      ]
+    }
+  }
 }
 
 # These are in their own source_set to avoid a dependency cycle with //common/graphics
