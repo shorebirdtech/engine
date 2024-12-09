@@ -80,6 +80,16 @@ FileCallbacks ShorebirdFileCallbacks() {
   };
 }
 
+void ConfigureShorebird(const ShorebirdFlutterProjectArgs& args,
+                        flutter::Settings& settings) {
+  // cache_path is used for both code_cache and app_storage, as we don't persist
+  // any data between releases. args.app_path is appended to
+  // the settings.application_library_path vector at this function's call site.
+  ConfigureShorebird(args.cache_path, args.cache_path, settings,
+                     args.shorebird_yaml_contents, args.app_version,
+                     args.app_build_number);
+}
+
 void ConfigureShorebird(std::string code_cache_path,
                         std::string app_storage_path,
                         Settings& settings,
@@ -137,7 +147,7 @@ void ConfigureShorebird(std::string code_cache_path,
   // https://github.com/shorebirdtech/shorebird/issues/950
 
   // We only set the base snapshot on iOS for now.
-#if FML_OS_IOS
+#if FML_OS_IOS || FML_OS_MACOSX
   SetBaseSnapshot(settings);
 #endif
 
@@ -147,7 +157,7 @@ void ConfigureShorebird(std::string code_cache_path,
     shorebird_free_string(c_active_path);
     FML_LOG(INFO) << "Shorebird updater: active path: " << active_path;
 
-#if FML_OS_IOS
+#if FML_OS_IOS || FML_OS_MACOSX
     // On iOS we add the patch to the front of the list instead of clearing
     // the list, to allow dart_shapshot.cc to still find the base snapshot
     // for the vm isolate.
