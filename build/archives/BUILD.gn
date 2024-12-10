@@ -24,6 +24,7 @@ generated_file("artifacts_entitlement_config") {
 if (build_engine_artifacts && !is_android) {
   zip_bundle("artifacts") {
     deps = [
+      "$dart_src/runtime/bin:analyze_snapshot",
       "$dart_src/runtime/bin:gen_snapshot",
       "//flutter/flutter_frontend_server:frontend_server",
       "//flutter/impeller/compiler:impellerc",
@@ -112,6 +113,10 @@ if (build_engine_artifacts && !is_android) {
     if (host_os == "mac") {
       deps += [ ":artifacts_entitlement_config" ]
       files += [
+        {
+          source = "$root_out_dir/analyze_snapshot$exe"
+          destination = "analyze_snapshot$exe"
+        },
         {
           source = "$target_gen_dir/entitlements.txt"
           destination = "entitlements.txt"
