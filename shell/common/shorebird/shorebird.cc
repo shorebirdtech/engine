@@ -14,7 +14,6 @@
 #include "flutter/fml/message_loop.h"
 #include "flutter/fml/native_library.h"
 #include "flutter/fml/paths.h"
-#include "flutter/fml/size.h"
 #include "flutter/lib/ui/plugins/callback_cache.h"
 #include "flutter/runtime/dart_snapshot.h"
 #include "flutter/runtime/dart_vm.h"
