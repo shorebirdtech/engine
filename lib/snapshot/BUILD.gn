@@ -37,10 +37,11 @@ group("generate_snapshot_bins") {
     deps += [ ":create_macos_gen_snapshots" ]
   } else if (host_os == "mac" &&
              (target_cpu == "arm" || target_cpu == "arm64")) {
-    deps += [
-      ":create_arm_analyze_snapshot",
-      ":create_arm_gen_snapshot",
-    ]
+    deps += [ ":create_arm_gen_snapshot" ]
+  }
+
+  if (host_os == "mac" && target_os != "mac" && (target_cpu == "arm" || target_cpu == "arm64")) {
+    deps += [ ":create_arm_analyze_snapshot" ]
   }
 
   # Build analyze_snapshot for 64-bit target CPUs.
