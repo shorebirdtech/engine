@@ -40,7 +40,8 @@ group("generate_snapshot_bins") {
     deps += [ ":create_arm_gen_snapshot" ]
   }
 
-  if (host_os == "mac" && target_os != "mac" && (target_cpu == "arm" || target_cpu == "arm64")) {
+  if (host_os == "mac" && target_os != "mac" &&
+      (target_cpu == "arm" || target_cpu == "arm64")) {
     deps += [ ":create_arm_analyze_snapshot" ]
   }
 
