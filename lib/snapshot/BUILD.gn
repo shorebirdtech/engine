@@ -237,7 +237,7 @@ if (host_os == "mac" && (target_os == "mac" || target_os == "ios")) {
       ":create_macos_gen_snapshot_x64_${target_cpu}",
     ]
   }
-  
+
   # Added by shorebird.
   # analyze_snapshot targets below were copied from the gen_snapshot targets
   # above to allow us to include analyze_snapshot in the artifacts generated
@@ -265,17 +265,20 @@ if (host_os == "mac" && (target_os == "mac" || target_os == "ios")) {
       output_dir = get_label_info(analyze_snapshot_target, "root_out_dir")
 
       sources = [ "${output_dir}/${analyze_snapshot_target_name}" ]
-      outputs =
-          [ "${root_out_dir}/artifacts_$host_cpu/analyze_snapshot_${target_cpu}" ]
+      outputs = [
+        "${root_out_dir}/artifacts_$host_cpu/analyze_snapshot_${target_cpu}",
+      ]
       deps = [ analyze_snapshot_target ]
     }
   }
 
-  build_mac_analyze_snapshot("create_macos_analyze_snapshot_arm64_${target_cpu}") {
+  build_mac_analyze_snapshot(
+      "create_macos_analyze_snapshot_arm64_${target_cpu}") {
     host_arch = "arm64"
   }
 
-  build_mac_analyze_snapshot("create_macos_analyze_snapshot_x64_${target_cpu}") {
+  build_mac_analyze_snapshot(
+      "create_macos_analyze_snapshot_x64_${target_cpu}") {
     host_arch = "x64"
   }
 
@@ -284,9 +287,11 @@ if (host_os == "mac" && (target_os == "mac" || target_os == "ios")) {
     outputs = [ "${root_out_dir}/analyze_snapshot_${target_cpu}" ]
     args = [
       "--in-arm64",
-      rebase_path("${root_out_dir}/artifacts_arm64/analyze_snapshot_${target_cpu}"),
+      rebase_path(
+          "${root_out_dir}/artifacts_arm64/analyze_snapshot_${target_cpu}"),
       "--in-x64",
-      rebase_path("${root_out_dir}/artifacts_x64/analyze_snapshot_${target_cpu}"),
+      rebase_path(
+          "${root_out_dir}/artifacts_x64/analyze_snapshot_${target_cpu}"),
       "--out",
       rebase_path("${root_out_dir}/analyze_snapshot_${target_cpu}"),
     ]
