@@ -34,9 +34,7 @@ source_set("shorebird") {
 
   if (host_os == "win" && target_os == "win") {
     if (target_cpu == "x64") {
-      libs = [
-        "//third_party/updater/target/x86_64-pc-windows-msvc/release/updater.lib",
-      ]
+      libs = [ "//third_party/updater/target/x86_64-pc-windows-msvc/release/updater.lib" ]
     }
   }
 }
