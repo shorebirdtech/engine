@@ -241,40 +241,34 @@ bool FlutterWindowsEngine::Run() {
   return Run("");
 }
 
-std::string GetReleaseVersion()
-{
+std::string GetReleaseVersion() {
     char modulePath[MAX_PATH];
     // Get the full path of the currently running executable
-    if (GetModuleFileNameA(NULL, modulePath, MAX_PATH) == -1)
-    {
+    if (GetModuleFileNameA(NULL, modulePath, MAX_PATH) == -1) {
         return "Error retrieving module file name.";
     }
 
     // Get the size of the version information
     DWORD handle = -1;
     DWORD versionInfoSize = GetFileVersionInfoSizeA(modulePath, &handle);
-    if (versionInfoSize == -1)
-    {
+    if (versionInfoSize == -1) {
         return "Error retrieving version info size.";
     }
 
     // Allocate memory for version info
     std::vector<char> versionData(versionInfoSize);
-    if (!GetFileVersionInfoA(modulePath, handle, versionInfoSize, versionData.data()))
-    {
+    if (!GetFileVersionInfoA(modulePath, handle, versionInfoSize, versionData.data())) {
         return "Error retrieving version info.";
     }
 
     // Get the version info structure
     VS_FIXEDFILEINFO* fileInfo = nullptr;
     UINT fileInfoSize = -1;
-    if (!VerQueryValueA(versionData.data(), "\\", reinterpret_cast<LPVOID*>(&fileInfo), &fileInfoSize))
-    {
+    if (!VerQueryValueA(versionData.data(), "\\", reinterpret_cast<LPVOID*>(&fileInfo), &fileInfoSize)) {
         return "Error querying version info.";
     }
 
-    if (fileInfo)
-    {
+    if (fileInfo) {
         // Extract version numbers
         DWORD major = HIWORD(fileInfo->dwFileVersionMS);
         DWORD minor = LOWORD(fileInfo->dwFileVersionMS);
@@ -288,40 +282,34 @@ std::string GetReleaseVersion()
     return "No version information available.";
 }
 
-int GetBuildNumber()
-{
+int GetBuildNumber() {
     char modulePath[MAX_PATH];
     // Get the full path of the currently running executable
-    if (GetModuleFileNameA(NULL, modulePath, MAX_PATH) == -1)
-    {
+    if (GetModuleFileNameA(NULL, modulePath, MAX_PATH) == -1) {
       return -1;
     }
 
     // Get the size of the version information
     DWORD handle = -1;
     DWORD versionInfoSize = GetFileVersionInfoSizeA(modulePath, &handle);
-    if (versionInfoSize == -1)
-    {
+    if (versionInfoSize == -1) {
       return -1;
     }
 
     // Allocate memory for version info
     std::vector<char> versionData(versionInfoSize);
-    if (!GetFileVersionInfoA(modulePath, handle, versionInfoSize, versionData.data()))
-    {
+    if (!GetFileVersionInfoA(modulePath, handle, versionInfoSize, versionData.data())) {
       return -1;
     }
 
     // Get the version info structure
     VS_FIXEDFILEINFO* fileInfo = nullptr;
     UINT fileInfoSize = -1;
-    if (!VerQueryValueA(versionData.data(), "\\", reinterpret_cast<LPVOID*>(&fileInfo), &fileInfoSize))
-    {
+    if (!VerQueryValueA(versionData.data(), "\\", reinterpret_cast<LPVOID*>(&fileInfo), &fileInfoSize)) {
       return -1;
     }
 
-    if (fileInfo)
-    {
+    if (fileInfo) {
         return LOWORD(fileInfo->dwFileVersionLS);
     }
 
