@@ -616,7 +616,6 @@ bool FlutterWindowsEngine::Run(std::string_view entrypoint) {
   return true;
 }
 
-
 bool FlutterWindowsEngine::Stop() {
   if (engine_) {
     for (const auto& [callback, registrar] :
