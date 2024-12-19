@@ -57,16 +57,15 @@ bool FlutterProjectBundle::HasValidPaths() {
 // non-empty. Logs and returns nullptr on failure.
 UniqueAotDataPtr FlutterProjectBundle::LoadAotDataStatic(
   std::filesystem::path aot_library_path,
-  const FlutterEngineProcTable& engine_procs
-) {
+  const FlutterEngineProcTable& engine_procs) {
   if (aot_library_path.empty()) {
     FML_LOG(ERROR)
         << "Attempted to load AOT data, but no aot_library_path was provided.";
     return UniqueAotDataPtr(nullptr, nullptr);
   }
   if (!std::filesystem::exists(aot_library_path)) {
-    FML_LOG(ERROR) << "Can't load AOT data from "
-                   << aot_library_path.u8string() << "; no such file.";
+    FML_LOG(ERROR) << "Can't load AOT data from " << aot_library_path.u8string()
+                   << " no such file.";
     return UniqueAotDataPtr(nullptr, nullptr);
   }
   FML_LOG(INFO) << "Loading aot_data from " << aot_library_path.u8string();
@@ -85,7 +84,8 @@ UniqueAotDataPtr FlutterProjectBundle::LoadAotDataStatic(
 
 UniqueAotDataPtr FlutterProjectBundle::LoadAotData(
     const FlutterEngineProcTable& engine_procs) {
-  return FlutterProjectBundle::LoadAotDataStatic(aot_library_path_, engine_procs);
+  return FlutterProjectBundle::LoadAotDataStatic(aot_library_path_,
+                                                 engine_procs);
 }
 
 FlutterProjectBundle::~FlutterProjectBundle() {}
