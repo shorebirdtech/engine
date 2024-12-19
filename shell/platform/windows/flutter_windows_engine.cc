@@ -249,38 +249,40 @@ std::string GetReleaseVersion() {
   char modulePath[MAX_PATH];
   // Get the full path of the currently running executable
   if (GetModuleFileNameA(NULL, modulePath, MAX_PATH) == -1) {
-      return "Error retrieving module file name.";
+    return "Error retrieving module file name.";
   }
 
   // Get the size of the version information
   DWORD handle = -1;
   DWORD versionInfoSize = GetFileVersionInfoSizeA(modulePath, &handle);
   if (versionInfoSize == -1) {
-      return "Error retrieving version info size.";
+    return "Error retrieving version info size.";
   }
 
   // Allocate memory for version info
   std::vector<char> versionData(versionInfoSize);
-  if (!GetFileVersionInfoA(modulePath, handle, versionInfoSize, versionData.data())) {
-      return "Error retrieving version info.";
+  if (!GetFileVersionInfoA(modulePath, handle, versionInfoSize,
+                           versionData.data())) {
+    return "Error retrieving version info.";
   }
 
   // Get the version info structure
   VS_FIXEDFILEINFO* fileInfo = nullptr;
   UINT fileInfoSize = -1;
-  if (!VerQueryValueA(versionData.data(), "\\", reinterpret_cast<LPVOID*>(&fileInfo), &fileInfoSize)) {
-      return "Error querying version info.";
+  if (!VerQueryValueA(versionData.data(), "\\",
+                      reinterpret_cast<LPVOID*>(&fileInfo), &fileInfoSize)) {
+    return "Error querying version info.";
   }
 
   if (fileInfo) {
-      // Extract version numbers
-      DWORD major = HIWORD(fileInfo->dwFileVersionMS);
-      DWORD minor = LOWORD(fileInfo->dwFileVersionMS);
-      DWORD build = HIWORD(fileInfo->dwFileVersionLS);
+    // Extract version numbers
+    DWORD major = HIWORD(fileInfo->dwFileVersionMS);
+    DWORD minor = LOWORD(fileInfo->dwFileVersionMS);
+    DWORD build = HIWORD(fileInfo->dwFileVersionLS);
 
-      char version[49];
-      snprintf(version, sizeof(version), "%lu.%lu.%lu", major, minor, build);
-      return std::string(version);
+    char version[49];
+    snprintf(version, sizeof(version), "%lu.%lu.%lu", major, minor, build);
+    return std::string(version);
   }
 
   return "No version information available.";
@@ -302,19 +304,21 @@ int GetBuildNumber() {
 
   // Allocate memory for version info
   std::vector<char> versionData(versionInfoSize);
-  if (!GetFileVersionInfoA(modulePath, handle, versionInfoSize, versionData.data())) {
+  if (!GetFileVersionInfoA(modulePath, handle, versionInfoSize,
+                           versionData.data())) {
     return -1;
   }
 
   // Get the version info structure
   VS_FIXEDFILEINFO* fileInfo = nullptr;
   UINT fileInfoSize = -1;
-  if (!VerQueryValueA(versionData.data(), "\\", reinterpret_cast<LPVOID*>(&fileInfo), &fileInfoSize)) {
+  if (!VerQueryValueA(versionData.data(), "\\",
+                      reinterpret_cast<LPVOID*>(&fileInfo), &fileInfoSize)) {
     return -1;
   }
 
   if (fileInfo) {
-      return LOWORD(fileInfo->dwFileVersionLS);
+    return LOWORD(fileInfo->dwFileVersionLS);
   }
 
   return -1;
@@ -454,7 +458,7 @@ bool FlutterWindowsEngine::Run(std::string_view entrypoint) {
   // Copied from shell\platform\darwin\macos\framework\Source\FlutterEngine.mm
   // Writes log messages to stdout.
   args.log_message_callback = [](const char* tag, const char* message,
-                                             void* user_data) {
+                                 void* user_data) {
     if (tag && tag[0]) {
       std::cout << tag << ": ";
     }
@@ -472,12 +476,13 @@ bool FlutterWindowsEngine::Run(std::string_view entrypoint) {
 
   args.custom_task_runners = &custom_task_runners;
 
-  auto shorebird_yaml_path = fml::paths::JoinPaths({assets_path_string, "shorebird.yaml"});
+  auto shorebird_yaml_path =
+      fml::paths::JoinPaths({assets_path_string, "shorebird.yaml"});
   std::string* shorebird_yaml_contents = new std::string();
-  if (filesystem::ReadFileToString(shorebird_yaml_path, shorebird_yaml_contents)) {
-    FML_LOG(INFO) << "Read shorebird.yaml";
-    FML_LOG(INFO) << shorebird_yaml_contents->c_str();
-    args.shorebird_args.shorebird_yaml_contents = shorebird_yaml_contents->c_str();
+  if (filesystem::ReadFileToString(shorebird_yaml_path,
+                                   shorebird_yaml_contents)) {
+    args.shorebird_args.shorebird_yaml_contents =
+        shorebird_yaml_contents->c_str();
   }
   args.shorebird_args.cache_path = R"(C:\Users\bryan\AppData\Local\shorebird)";
   auto appVersion = GetReleaseVersion();
@@ -485,7 +490,8 @@ bool FlutterWindowsEngine::Run(std::string_view entrypoint) {
   auto buildNumber = GetBuildNumber();
   auto buildNumberStr = std::to_string(buildNumber);
   args.shorebird_args.app_build_number = buildNumberStr.c_str();
-  args.shorebird_args.app_path = R"(C:\Users\bryan\Desktop\build\windows\x64\runner\Release\data\app.so)";
+  args.shorebird_args.app_path =
+      R"(C:\Users\bryan\Desktop\build\windows\x64\runner\Release\data\app.so)";
 
   // _embedderAPI.Initialize seems to be called by the FlutterEngineRun (visible
   // to us here as embedder_api_.Run).
@@ -549,7 +555,8 @@ bool FlutterWindowsEngine::Run(std::string_view entrypoint) {
     // to include the patch path, if one exists.
     auto maybe_patch_path = settings.application_library_path.back();
     FML_LOG(INFO) << "[shorebird] Maybe patch path: " << maybe_patch_path;
-    aot_data_ = FlutterProjectBundle::LoadAotDataStatic(maybe_patch_path, embedder_api_);
+    aot_data_ = FlutterProjectBundle::LoadAotDataStatic(maybe_patch_path,
+                                                        embedder_api_);
   } else {
     FML_LOG(INFO) << "[shorebird] No shorebird YAML contents provided.";
   }

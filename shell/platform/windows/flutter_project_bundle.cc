@@ -56,8 +56,8 @@ bool FlutterProjectBundle::HasValidPaths() {
 // Attempts to load AOT data from the given path, which must be absolute and
 // non-empty. Logs and returns nullptr on failure.
 UniqueAotDataPtr FlutterProjectBundle::LoadAotDataStatic(
-  std::filesystem::path aot_library_path,
-  const FlutterEngineProcTable& engine_procs) {
+    std::filesystem::path aot_library_path,
+    const FlutterEngineProcTable& engine_procs) {
   if (aot_library_path.empty()) {
     FML_LOG(ERROR)
         << "Attempted to load AOT data, but no aot_library_path was provided.";
