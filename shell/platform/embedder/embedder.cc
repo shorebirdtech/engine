@@ -1972,6 +1972,7 @@ FlutterEngineResult FlutterEngineInitialize(size_t version,
 
   flutter::Settings settings = flutter::SettingsFromCommandLine(command_line);
 
+  // First access of args aot_data
   if (SAFE_ACCESS(args, aot_data, nullptr)) {
     if (SAFE_ACCESS(args, vm_snapshot_data, nullptr) ||
         SAFE_ACCESS(args, vm_snapshot_instructions, nullptr) ||
@@ -1985,6 +1986,9 @@ FlutterEngineResult FlutterEngineInitialize(size_t version,
   }
 
   if (flutter::DartVM::IsRunningPrecompiledCode()) {
+    // WIN: We need to get aot_data into args before here
+    //   AOT data is loaded from the snapshot in
+    //   shell\platform\windows\flutter_project_bundle.cc
     PopulateAOTSnapshotMappingCallbacks(args, settings);
   } else {
     PopulateJITSnapshotMappingCallbacks(args, settings);

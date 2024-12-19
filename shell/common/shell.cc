@@ -444,7 +444,7 @@ Shell::Shell(DartVMRef vm,
       weak_factory_gpu_(nullptr),
       weak_factory_(this) {
   // FIXME: This is probably the wrong place to hook into.
-#if FML_OS_ANDROID || FML_OS_IOS || FML_OS_MACOSX
+#if FML_OS_ANDROID || FML_OS_IOS || FML_OS_MACOSX || FML_OS_WINDOWS
   if (!vm_) {
     shorebird_report_launch_failure();
   } else {

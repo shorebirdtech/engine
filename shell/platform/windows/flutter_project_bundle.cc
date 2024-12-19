@@ -55,19 +55,22 @@ bool FlutterProjectBundle::HasValidPaths() {
 
 // Attempts to load AOT data from the given path, which must be absolute and
 // non-empty. Logs and returns nullptr on failure.
-UniqueAotDataPtr FlutterProjectBundle::LoadAotData(
-    const FlutterEngineProcTable& engine_procs) {
-  if (aot_library_path_.empty()) {
+UniqueAotDataPtr FlutterProjectBundle::LoadAotDataStatic(
+  std::filesystem::path aot_library_path,
+  const FlutterEngineProcTable& engine_procs
+) {
+  if (aot_library_path.empty()) {
     FML_LOG(ERROR)
         << "Attempted to load AOT data, but no aot_library_path was provided.";
     return UniqueAotDataPtr(nullptr, nullptr);
   }
-  if (!std::filesystem::exists(aot_library_path_)) {
+  if (!std::filesystem::exists(aot_library_path)) {
     FML_LOG(ERROR) << "Can't load AOT data from "
-                   << aot_library_path_.u8string() << "; no such file.";
+                   << aot_library_path.u8string() << "; no such file.";
     return UniqueAotDataPtr(nullptr, nullptr);
   }
-  std::string path_string = aot_library_path_.u8string();
+  FML_LOG(INFO) << "Loading aot_data from " << aot_library_path.u8string();
+  std::string path_string = aot_library_path.u8string();
   FlutterEngineAOTDataSource source = {};
   source.type = kFlutterEngineAOTDataSourceTypeElfPath;
   source.elf_path = path_string.c_str();
@@ -78,6 +81,11 @@ UniqueAotDataPtr FlutterProjectBundle::LoadAotData(
     return UniqueAotDataPtr(nullptr, nullptr);
   }
   return UniqueAotDataPtr(data, engine_procs.CollectAOTData);
+}
+
+UniqueAotDataPtr FlutterProjectBundle::LoadAotData(
+    const FlutterEngineProcTable& engine_procs) {
+  return FlutterProjectBundle::LoadAotDataStatic(aot_library_path_, engine_procs);
 }
 
 FlutterProjectBundle::~FlutterProjectBundle() {}

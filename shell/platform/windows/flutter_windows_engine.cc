@@ -14,6 +14,8 @@
 #include "flutter/fml/paths.h"
 #include "flutter/fml/platform/win/wstring_conversion.h"
 #include "flutter/fml/synchronization/waitable_event.h"
+#include "flutter/shell/common/shorebird/shorebird.h"
+#include "flutter/shell/common/switches.h"
 #include "flutter/shell/platform/common/client_wrapper/binary_messenger_impl.h"
 #include "flutter/shell/platform/common/client_wrapper/include/flutter/standard_message_codec.h"
 #include "flutter/shell/platform/common/path_utils.h"
@@ -323,6 +325,7 @@ bool FlutterWindowsEngine::Run(std::string_view entrypoint) {
   }
   std::string assets_path_string = project_->assets_path().u8string();
   std::string icu_path_string = project_->icu_path().u8string();
+  // This loads AOT data from the project_'s aot_library_path_.
   if (embedder_api_.RunsAOTCompiledDartCode()) {
     aot_data_ = project_->LoadAotData(embedder_api_);
     if (!aot_data_) {
@@ -373,9 +376,7 @@ bool FlutterWindowsEngine::Run(std::string_view entrypoint) {
   args.struct_size = sizeof(FlutterProjectArgs);
   args.shutdown_dart_vm_when_done = true;
   args.assets_path = assets_path_string.c_str();
-  FML_LOG(INFO) << assets_path_string;
   args.icu_data_path = icu_path_string.c_str();
-  FML_LOG(INFO) << "ICU path " << icu_path_string;
   args.command_line_argc = static_cast<int>(argv.size());
   args.command_line_argv = argv.empty() ? nullptr : argv.data();
 
@@ -476,41 +477,13 @@ bool FlutterWindowsEngine::Run(std::string_view entrypoint) {
     FML_LOG(INFO) << shorebird_yaml_contents->c_str();
     args.shorebird_args.shorebird_yaml_contents = shorebird_yaml_contents->c_str();
   }
-  // FML_LOG(INFO) << "Caches dir " << fml::paths::GetCachesDirectory().get();
-  args.shorebird_args.cache_path = "C:\\Users\\bryan\\AppData\\Local\\shorebird";
+  args.shorebird_args.cache_path = R"(C:\Users\bryan\AppData\Local\shorebird)";
   auto appVersion = GetReleaseVersion();
   args.shorebird_args.app_version = appVersion.c_str();
   auto buildNumber = GetBuildNumber();
   auto buildNumberStr = std::to_string(buildNumber);
   args.shorebird_args.app_build_number = buildNumberStr.c_str();
-  args.shorebird_args.app_path = "C:\\Users\\bryan\\Desktop\\build\\windows\\app.so";
-
-
-  // BEGIN macos logic
-  // NSString* bundlePath =
-  //     [[NSBundle bundleWithURL:[NSBundle.mainBundle.privateFrameworksURL
-  //                                  URLByAppendingPathComponent:@"App.framework"]] bundlePath];
-  // bundlePath = [bundlePath stringByAppendingString:@"/App"];
-  // flutterArguments.shorebird_args.app_path = bundlePath.UTF8String;
-  // NSString* assetsPath = _project.assetsPath;
-  // NSURL* shorebirdYamlPath = [NSURL URLWithString:@"shorebird.yaml"
-  //                                   relativeToURL:[NSURL fileURLWithPath:assetsPath]];
-  // NSString* shorebirdYamlContents = [NSString stringWithContentsOfURL:shorebirdYamlPath
-  //                                                            encoding:NSUTF8StringEncoding
-  //                                                               error:nil];
-  // NSString* appVersion =
-  //     [NSBundle.mainBundle objectForInfoDictionaryKey:@"CFBundleShortVersionString"];
-  // NSString* appBuildNumber = [NSBundle.mainBundle objectForInfoDictionaryKey:@"CFBundleVersion"];
-  // flutterArguments.shorebird_args.app_version = appVersion.UTF8String;
-  // flutterArguments.shorebird_args.app_build_number = appBuildNumber.UTF8String;
-
-  // std::string cache_path =
-  //     fml::paths::JoinPaths({getenv("HOME"), "Library", "Application Support", "shorebird"});
-  // flutterArguments.shorebird_args.cache_path = cache_path.c_str();
-  // flutterArguments.shorebird_args.shorebird_yaml_contents = shorebirdYamlContents.UTF8String;
-  // END macos logic
-
-  // assets path is C:\Users\bryan\Documents\sandbox\hello_windows\build\windows\x64\runner\Release\data\flutter_assets
+  args.shorebird_args.app_path = R"(C:\Users\bryan\Desktop\build\windows\x64\runner\Release\data\app.so)";
 
   // _embedderAPI.Initialize seems to be called by the FlutterEngineRun (visible
   // to us here as embedder_api_.Run).
@@ -557,6 +530,27 @@ bool FlutterWindowsEngine::Run(std::string_view entrypoint) {
     return host->Present(info);
   };
   args.compositor = &compositor;
+
+  // FIXME
+  // The following was copied from the embedder. Ideally it would live there,
+  // but we need to populate args.aot_data with our patch, and we only know
+  // whether we have a patch (and where it is) after we've called
+  // ConfigureShorebird.
+  if (args.shorebird_args.shorebird_yaml_contents) {
+    fml::CommandLine command_line;
+    flutter::Settings settings = flutter::SettingsFromCommandLine(command_line);
+
+    FML_LOG(INFO) << "[shorebird] Shorebird YAML contents provided.";
+    settings.application_library_path.push_back(args.shorebird_args.app_path);
+    flutter::ConfigureShorebird(args.shorebird_args, settings);
+    // settings.application_library_path has been modified by ConfigureShorebird
+    // to include the patch path, if one exists.
+    auto maybe_patch_path = settings.application_library_path.back();
+    FML_LOG(INFO) << "[shorebird] Maybe patch path: " << maybe_patch_path;
+    aot_data_ = FlutterProjectBundle::LoadAotDataStatic(maybe_patch_path, embedder_api_);
+  } else {
+    FML_LOG(INFO) << "[shorebird] No shorebird YAML contents provided.";
+  }
 
   if (aot_data_) {
     args.aot_data = aot_data_.get();
