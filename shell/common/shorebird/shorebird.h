@@ -13,9 +13,9 @@ struct ShorebirdConfigArgs { std::string code_cache_path;
   const std::string& version;
   const std::string& version_code;
 
-  ShorebirdConfigArgs(std::string code_cache_path, 
+  ShorebirdConfigArgs(std::string code_cache_path,
                       std::string app_storage_path,
-                      std::string release_app_library_path, 
+                      std::string release_app_library_path,
                       const std::string& shorebird_yaml,
                       const std::string& version, 
                       const std::string& version_code)
