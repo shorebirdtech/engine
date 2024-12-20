@@ -1019,11 +1019,9 @@ void FlutterWindowsEngine::OnPreEngineRestart() {
 }
 
 std::string FlutterWindowsEngine::GetExecutableName() const {
-  FML_LOG(INFO) << "In GetExecutableName";
   std::pair<bool, std::string> result = fml::paths::GetExecutablePath();
   if (result.first) {
     const std::string& executable_path = result.second;
-    FML_LOG(INFO) << "executable_path: " << executable_path;
     size_t last_separator = executable_path.find_last_of("/\\");
     if (last_separator == std::string::npos ||
         last_separator == executable_path.size() - 1) {
