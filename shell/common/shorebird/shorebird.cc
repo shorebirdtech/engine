@@ -205,16 +205,12 @@ void ConfigureShorebird(std::string code_cache_path,
                         const std::string& shorebird_yaml,
                         const std::string& version,
                         const std::string& version_code) {
-  FML_LOG(INFO) << "In ConfigureShorebird";
   // If you are crashing here, you probably are running Shorebird in a Debug
   // config, where the AOT snapshot won't be linked into the process, and thus
   // lookups will fail.  Change your Scheme to Release to fix:
   // https://github.com/flutter/flutter/wiki/Debugging-the-engine#debugging-ios-builds-with-xcode
-  // FIXME: This was commented out because the windows flutter engine does not
-  //     populate the settings snapshots. Ideally we would call
-  //     ConfigureShorebird from the embedder and this would be uncommented.
-  // FML_CHECK(DartSnapshot::VMSnapshotFromSettings(settings))
-  //     << "XCode Scheme must be set to Release to use Shorebird";
+  FML_CHECK(DartSnapshot::VMSnapshotFromSettings(settings))
+      << "XCode Scheme must be set to Release to use Shorebird";
 
   auto shorebird_updater_dir_name = "shorebird_updater";
 
@@ -230,7 +226,6 @@ void ConfigureShorebird(std::string code_cache_path,
   bool init_result;
   // Using a block to make AppParameters lifetime explicit.
   {
-    FML_LOG(INFO) << "Constructing app parameters";
     AppParameters app_parameters;
     // Combine version and version_code into a single string.
     // We could also pass these separately through to the updater if needed.
@@ -242,7 +237,6 @@ void ConfigureShorebird(std::string code_cache_path,
     // https://stackoverflow.com/questions/26032039/convert-vectorstring-into-char-c
     std::vector<const char*> c_paths{};
     for (const auto& string : settings.application_library_path) {
-      FML_LOG(INFO) << "Pushing " << string << " to c_paths";
       c_paths.push_back(string.c_str());
     }
     // Do not modify application_library_path or c_strings will invalidate.
@@ -250,11 +244,9 @@ void ConfigureShorebird(std::string code_cache_path,
     app_parameters.original_libapp_paths = c_paths.data();
     app_parameters.original_libapp_paths_size = c_paths.size();
 
-    FML_LOG(INFO) << "Calling shorebird_init";
     // shorebird_init copies from app_parameters and shorebirdYaml.
     init_result = shorebird_init(&app_parameters, ShorebirdFileCallbacks(),
                                  shorebird_yaml.c_str());
-    FML_LOG(INFO) << "init_result: " << init_result;
   }
 
   // We've decided not to support synchronous updates on launch for now.
@@ -268,10 +260,8 @@ void ConfigureShorebird(std::string code_cache_path,
   SetBaseSnapshot(settings);
 #endif
 
-  FML_LOG(INFO) << "Checking for active patch";
   char* c_active_path = shorebird_next_boot_patch_path();
   if (c_active_path != NULL) {
-    FML_LOG(INFO) << "Found active patch";
     std::string active_path = c_active_path;
     shorebird_free_string(c_active_path);
     FML_LOG(INFO) << "Shorebird updater: active path: " << active_path;
@@ -307,9 +297,7 @@ void ConfigureShorebird(std::string code_cache_path,
   // Once start_update_thread is called, the next_boot_patch* functions may
   // change their return values if the shorebird_report_launch_failed
   // function is called.
-  FML_LOG(INFO) << "Reporting launch start";
   shorebird_report_launch_start();
-  FML_LOG(INFO) << "Reported launch start";
 
   if (shorebird_should_auto_update()) {
     FML_LOG(INFO) << "Starting Shorebird update";
