@@ -6,7 +6,8 @@
 
 namespace flutter {
 
-struct ShorebirdConfigArgs { std::string code_cache_path;
+struct ShorebirdConfigArgs {
+  std::string code_cache_path;
   std::string app_storage_path;
   std::string release_app_library_path;
   const std::string& shorebird_yaml;
@@ -17,7 +18,7 @@ struct ShorebirdConfigArgs { std::string code_cache_path;
                       std::string app_storage_path,
                       std::string release_app_library_path,
                       const std::string& shorebird_yaml,
-                      const std::string& version, 
+                      const std::string& version,
                       const std::string& version_code)
       : code_cache_path(code_cache_path),
         app_storage_path(app_storage_path),

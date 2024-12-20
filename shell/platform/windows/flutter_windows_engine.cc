@@ -341,16 +341,12 @@ bool FlutterWindowsEngine::Run(std::string_view entrypoint) {
     auto buildNumber = GetBuildNumber();
     auto buildNumberStr = std::to_string(buildNumber);
     auto executable_location = fml::paths::GetExecutableDirectoryPath().second;
-    auto app_path = fml::paths::JoinPaths({executable_location, "data",
-                                          "app.so"});
+    auto app_path =
+        fml::paths::JoinPaths({executable_location, "data", "app.so"});
     FML_LOG(INFO) << "App path: " << app_path;
-    flutter::ShorebirdConfigArgs shorebird_args = 
-      flutter::ShorebirdConfigArgs(code_cache_path, 
-                                   code_cache_path,
-                                   app_path,
-                                   *shorebird_yaml_contents,
-                                   appVersion,
-                                   buildNumberStr);
+    flutter::ShorebirdConfigArgs shorebird_args = flutter::ShorebirdConfigArgs(
+        code_cache_path, code_cache_path, app_path, *shorebird_yaml_contents,
+        appVersion, buildNumberStr);
     auto patch_path = flutter::ConfigureShorebird(shorebird_args);
     if (!patch_path.empty()) {
       // If we have a patch installed, we replace the default AOT library path
