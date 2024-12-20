@@ -331,6 +331,35 @@ bool FlutterWindowsEngine::Run(std::string_view entrypoint) {
   }
   std::string assets_path_string = project_->assets_path().u8string();
   std::string icu_path_string = project_->icu_path().u8string();
+  auto shorebird_yaml_path =
+      fml::paths::JoinPaths({assets_path_string, "shorebird.yaml"});
+  std::string* shorebird_yaml_contents = new std::string();
+  if (filesystem::ReadFileToString(shorebird_yaml_path,
+                                   shorebird_yaml_contents)) {
+    auto code_cache_path = R"(C:\Users\bryan\AppData\Local\shorebird)";
+    auto appVersion = GetReleaseVersion();
+    auto buildNumber = GetBuildNumber();
+    auto buildNumberStr = std::to_string(buildNumber);
+    auto executable_location = fml::paths::GetExecutableDirectoryPath().second;
+    auto app_path = fml::paths::JoinPaths({executable_location, "data",
+                                          "app.so"});
+    FML_LOG(INFO) << "App path: " << app_path;
+    flutter::ShorebirdConfigArgs shorebird_args = 
+      flutter::ShorebirdConfigArgs(code_cache_path, 
+                                   code_cache_path,
+                                   app_path,
+                                   *shorebird_yaml_contents,
+                                   appVersion,
+                                   buildNumberStr);
+    auto patch_path = flutter::ConfigureShorebird(shorebird_args);
+    if (!patch_path.empty()) {
+      // If we have a patch installed, we replace the default AOT library path
+      // with the patch path here.
+      FML_LOG(INFO) << "Setting project patch path: " << patch_path;
+      project_->SetAotLibraryPath(patch_path);
+    }
+  }
+
   // This loads AOT data from the project_'s aot_library_path_.
   if (embedder_api_.RunsAOTCompiledDartCode()) {
     aot_data_ = project_->LoadAotData(embedder_api_);
@@ -476,26 +505,6 @@ bool FlutterWindowsEngine::Run(std::string_view entrypoint) {
 
   args.custom_task_runners = &custom_task_runners;
 
-  auto shorebird_yaml_path =
-      fml::paths::JoinPaths({assets_path_string, "shorebird.yaml"});
-  std::string* shorebird_yaml_contents = new std::string();
-  if (filesystem::ReadFileToString(shorebird_yaml_path,
-                                   shorebird_yaml_contents)) {
-    args.shorebird_args.shorebird_yaml_contents =
-        shorebird_yaml_contents->c_str();
-  }
-  args.shorebird_args.cache_path = R"(C:\Users\bryan\AppData\Local\shorebird)";
-  auto appVersion = GetReleaseVersion();
-  args.shorebird_args.app_version = appVersion.c_str();
-  auto buildNumber = GetBuildNumber();
-  auto buildNumberStr = std::to_string(buildNumber);
-  args.shorebird_args.app_build_number = buildNumberStr.c_str();
-  args.shorebird_args.app_path =
-      R"(C:\Users\bryan\Desktop\build\windows\x64\runner\Release\data\app.so)";
-
-  // _embedderAPI.Initialize seems to be called by the FlutterEngineRun (visible
-  // to us here as embedder_api_.Run).
-
   if (!platform_view_plugin_) {
     platform_view_plugin_ = std::make_unique<PlatformViewPlugin>(
         messenger_wrapper_.get(), task_runner_.get());
@@ -538,28 +547,6 @@ bool FlutterWindowsEngine::Run(std::string_view entrypoint) {
     return host->Present(info);
   };
   args.compositor = &compositor;
-
-  // FIXME
-  // The following was copied from the embedder. Ideally it would live there,
-  // but we need to populate args.aot_data with our patch, and we only know
-  // whether we have a patch (and where it is) after we've called
-  // ConfigureShorebird.
-  if (args.shorebird_args.shorebird_yaml_contents) {
-    fml::CommandLine command_line;
-    flutter::Settings settings = flutter::SettingsFromCommandLine(command_line);
-
-    FML_LOG(INFO) << "[shorebird] Shorebird YAML contents provided.";
-    settings.application_library_path.push_back(args.shorebird_args.app_path);
-    flutter::ConfigureShorebird(args.shorebird_args, settings);
-    // settings.application_library_path has been modified by ConfigureShorebird
-    // to include the patch path, if one exists.
-    auto maybe_patch_path = settings.application_library_path.back();
-    FML_LOG(INFO) << "[shorebird] Maybe patch path: " << maybe_patch_path;
-    aot_data_ = FlutterProjectBundle::LoadAotDataStatic(maybe_patch_path,
-                                                        embedder_api_);
-  } else {
-    FML_LOG(INFO) << "[shorebird] No shorebird YAML contents provided.";
-  }
 
   if (aot_data_) {
     args.aot_data = aot_data_.get();

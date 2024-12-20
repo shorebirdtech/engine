@@ -79,6 +79,116 @@ FileCallbacks ShorebirdFileCallbacks() {
   };
 }
 
+std::string ConfigureShorebird(const ShorebirdConfigArgs& args) {
+    FML_LOG(INFO) << "In ConfigureShorebird";
+  // If you are crashing here, you probably are running Shorebird in a Debug
+  // config, where the AOT snapshot won't be linked into the process, and thus
+  // lookups will fail.  Change your Scheme to Release to fix:
+  // https://github.com/flutter/flutter/wiki/Debugging-the-engine#debugging-ios-builds-with-xcode
+  // FIXME: This was commented out because the windows flutter engine does not
+  //     populate the settings snapshots. Ideally we would call
+  //     ConfigureShorebird from the embedder and this would be uncommented.
+  // FML_CHECK(DartSnapshot::VMSnapshotFromSettings(settings))
+  //     << "XCode Scheme must be set to Release to use Shorebird";
+
+  auto shorebird_updater_dir_name = "shorebird_updater";
+
+  auto code_cache_dir = fml::paths::JoinPaths(
+      {std::move(args.code_cache_path), shorebird_updater_dir_name});
+  auto app_storage_dir = fml::paths::JoinPaths(
+      {std::move(args.app_storage_path), shorebird_updater_dir_name});
+
+  fml::CreateDirectory(fml::paths::GetCachesDirectory(),
+                       {shorebird_updater_dir_name},
+                       fml::FilePermission::kReadWrite);
+
+  bool init_result;
+  // Using a block to make AppParameters lifetime explicit.
+  {
+    FML_LOG(INFO) << "Constructing app parameters";
+    AppParameters app_parameters;
+    // Combine version and version_code into a single string.
+    // We could also pass these separately through to the updater if needed.
+    auto release_version = args.version + "+" + args.version_code;
+    app_parameters.release_version = release_version.c_str();
+    app_parameters.code_cache_dir = code_cache_dir.c_str();
+    app_parameters.app_storage_dir = app_storage_dir.c_str();
+
+    // https://stackoverflow.com/questions/26032039/convert-vectorstring-into-char-c
+    std::vector<const char*> c_paths{};
+    c_paths.push_back(args.release_app_library_path.c_str());
+    // for (const auto& string : settings.application_library_path) {
+    //   FML_LOG(INFO) << "Pushing " << string << " to c_paths";
+    //   c_paths.push_back(string.c_str());
+    // }
+    // Do not modify application_library_path or c_strings will invalidate.
+
+    app_parameters.original_libapp_paths = c_paths.data();
+    app_parameters.original_libapp_paths_size = c_paths.size();
+
+    FML_LOG(INFO) << "Calling shorebird_init";
+    // shorebird_init copies from app_parameters and shorebirdYaml.
+    init_result = shorebird_init(&app_parameters, ShorebirdFileCallbacks(),
+                                 args.shorebird_yaml.c_str());
+    FML_LOG(INFO) << "init_result: " << init_result;
+  }
+
+  // We've decided not to support synchronous updates on launch for now.
+  // It's a terrible user experience (having the app hang on launch) and
+  // instead we will provide examples of how to build a custom update UI
+  // within Dart, including updating as part of login, etc.
+  // https://github.com/shorebirdtech/shorebird/issues/950
+
+  // We only set the base snapshot on iOS for now.
+#if FML_OS_IOS || FML_OS_MACOSX
+  SetBaseSnapshot(settings);
+#endif
+
+  FML_LOG(INFO) << "Checking for active patch";
+  char* c_active_path = shorebird_next_boot_patch_path();
+  std::string active_path = "";
+  if (c_active_path != NULL) {
+    FML_LOG(INFO) << "Found active patch!";
+    active_path = c_active_path;
+    shorebird_free_string(c_active_path);
+    FML_LOG(INFO) << "Shorebird updater: patch path: " << active_path;
+  } else {
+    FML_LOG(INFO) << "Shorebird updater: no active patch.";
+  }
+
+  // We are careful only to report a launch start in the case where it's the
+  // first time we've configured shorebird this process. Otherwise we could end
+  // up in a case where we report a launch start, but never a completion (e.g.
+  // from package:flutter_work_manager which sometimes creates a FlutterEngine
+  // (and thus configures shorebird) but never runs it. The proper fix for this
+  // is probably to move the launch_start() call to be later in the lifecycle
+  // (when the snapshot is loaded and run, rather than when FlutterEngine is
+  // initialized).  This "hack" will still have a problem where FlutterEngine is
+  // initialized but never run before the app is quit, could still cause us to
+  // suddenly mark-bad a patch that was never actually attempted to launch.
+  if (!init_result) {
+    return "";
+  }
+
+  // Once start_update_thread is called, the next_boot_patch* functions may
+  // change their return values if the shorebird_report_launch_failed
+  // function is called.
+  FML_LOG(INFO) << "Reporting launch start";
+  shorebird_report_launch_start();
+  FML_LOG(INFO) << "Reported launch start";
+
+  if (shorebird_should_auto_update()) {
+    FML_LOG(INFO) << "Starting Shorebird update";
+    shorebird_start_update_thread();
+  } else {
+    FML_LOG(INFO)
+        << "Shorebird auto_update disabled, not checking for updates.";
+  }
+
+  FML_LOG(INFO) << "Returning active path: " << active_path;
+  return active_path;
+}
+
 void ConfigureShorebird(const ShorebirdFlutterProjectArgs& args,
                         flutter::Settings& settings) {
   // cache_path is used for both code_cache and app_storage, as we don't persist

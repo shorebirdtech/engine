@@ -2312,12 +2312,8 @@ FlutterEngineResult FlutterEngineInitialize(size_t version,
 
   // Begin shorebird
   if (args->shorebird_args.shorebird_yaml_contents) {
-    FML_LOG(INFO) << "[shorebird] Shorebird YAML contents provided.";
     settings.application_library_path.push_back(args->shorebird_args.app_path);
-    FML_LOG(INFO) << "[shorebird] App path: " << args->shorebird_args.app_path;
     flutter::ConfigureShorebird(args->shorebird_args, settings);
-  } else {
-    FML_LOG(INFO) << "[shorebird] No shorebird YAML contents provided.";
   }
   // End shorebird
 
