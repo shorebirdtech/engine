@@ -80,14 +80,14 @@ FileCallbacks ShorebirdFileCallbacks() {
 }
 
 std::string ConfigureShorebird(const ShorebirdConfigArgs& args) {
-    FML_LOG(INFO) << "In ConfigureShorebird";
+  FML_LOG(INFO) << "In ConfigureShorebird";
+  // FIXME: This was commented out because the windows flutter engine does not
+  //     populate the settings snapshots. Ideally we would call
+  //     ConfigureShorebird from the embedder and this would be uncommented.
   // If you are crashing here, you probably are running Shorebird in a Debug
   // config, where the AOT snapshot won't be linked into the process, and thus
   // lookups will fail.  Change your Scheme to Release to fix:
   // https://github.com/flutter/flutter/wiki/Debugging-the-engine#debugging-ios-builds-with-xcode
-  // FIXME: This was commented out because the windows flutter engine does not
-  //     populate the settings snapshots. Ideally we would call
-  //     ConfigureShorebird from the embedder and this would be uncommented.
   // FML_CHECK(DartSnapshot::VMSnapshotFromSettings(settings))
   //     << "XCode Scheme must be set to Release to use Shorebird";
 
