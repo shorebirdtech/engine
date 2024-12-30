@@ -5,12 +5,12 @@
 #include "flutter/shell/platform/windows/flutter_windows_engine.h"
 
 #include <dwmapi.h>
+#include <shlobj.h>
+#include <windows.h>
 
 #include <filesystem>
 #include <shared_mutex>
-#include <shlobj.h>
 #include <sstream>
-#include <windows.h>
 
 #include "flutter/fml/logging.h"
 #include "flutter/fml/paths.h"
