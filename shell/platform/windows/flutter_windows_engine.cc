@@ -320,7 +320,7 @@ bool FlutterWindowsEngine::Run(std::string_view entrypoint) {
     auto app_path =
         fml::paths::JoinPaths({executable_location, "data", "app.so"});
     auto [release_version, build_number] = GetReleaseVersionAndBuildNumber();
-    
+
     flutter::ShorebirdConfigArgs shorebird_args = flutter::ShorebirdConfigArgs(
         code_cache_path, code_cache_path, app_path, *shorebird_yaml_contents,
         release_version, std::to_string(build_number));
