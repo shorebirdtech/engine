@@ -8,7 +8,9 @@
 
 #include <filesystem>
 #include <shared_mutex>
+#include <shlobj.h>
 #include <sstream>
+#include <windows.h>
 
 #include "flutter/fml/logging.h"
 #include "flutter/fml/paths.h"
@@ -323,6 +325,22 @@ int GetBuildNumber() {
   return -1;
 }
 
+std::string GetLocalAppDataPath() {
+  PWSTR path = nullptr;
+  HRESULT result = SHGetKnownFolderPath(FOLDERID_LocalAppData, 0, NULL, &path);
+  if (SUCCEEDED(result)) {
+    std::wstring widePath(path);
+    std::string localAppDataPath(widePath.begin(), widePath.end());
+    // The calling process is responsible for freeing this resource
+    // https://learn.microsoft.com/en-us/windows/win32/api/shlobj_core/nf-shlobj_core-shgetknownfolderpath
+    CoTaskMemFree(path);
+    return localAppDataPath;
+  } else {
+    FML_LOG(ERROR) << "Failed to retrieve the local AppData directory.";
+    return "";
+  }
+}
+
 bool FlutterWindowsEngine::Run(std::string_view entrypoint) {
   if (!project_->HasValidPaths()) {
     FML_LOG(ERROR) << "Missing or unresolvable paths to assets.";
@@ -335,7 +353,7 @@ bool FlutterWindowsEngine::Run(std::string_view entrypoint) {
   std::string* shorebird_yaml_contents = new std::string();
   if (filesystem::ReadFileToString(shorebird_yaml_path,
                                    shorebird_yaml_contents)) {
-    auto code_cache_path = R"(C:\Users\bryan\AppData\Local\shorebird)";
+    auto code_cache_path = GetLocalAppDataPath();
     auto executable_location = fml::paths::GetExecutableDirectoryPath().second;
     auto app_path =
         fml::paths::JoinPaths({executable_location, "data", "app.so"});
