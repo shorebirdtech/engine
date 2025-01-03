@@ -246,7 +246,9 @@ bool FlutterWindowsEngine::Run() {
 
 int GetReleaseVersionAndBuildNumber(ReleaseVersion* release_version) {
   char module_path[MAX_PATH];
-  // Get the full path of the currently running executable
+  // Get the full path of the currently running executable. The return value is
+  // the size of the string that was copied to the buffer, with -1 indicating
+  // failure.
   if (GetModuleFileNameA(NULL, module_path, MAX_PATH) == -1) {
     return -1;
   }
