@@ -7,6 +7,7 @@
 #include <dwmapi.h>
 #include <shlobj.h>
 #include <windows.h>
+#include <winerror.h>
 
 #include <filesystem>
 #include <shared_mutex>
@@ -261,16 +262,17 @@ int GetReleaseVersionAndBuildNumber(ReleaseVersion* release_version) {
   }
 
   // Allocate memory for version info
-  std::vector<char> version_data(version_info_size);
+  // std::vector<char> version_data(version_info_size);
+  std::unique_ptr<char[]> version_data(new char[version_info_size]);
   if (!GetFileVersionInfoA(module_path, handle, version_info_size,
-                           version_data.data())) {
+                           version_data.get())) {
     return -1;
   }
 
   // Get the version info structure
   VS_FIXEDFILEINFO* file_info = nullptr;
   UINT file_info_size = -1;
-  if (!VerQueryValueA(version_data.data(), "\\",
+  if (!VerQueryValueA(version_data.get(), "\\",
                       reinterpret_cast<LPVOID*>(&file_info), &file_info_size)) {
     return -1;
   }
@@ -292,20 +294,20 @@ int GetReleaseVersionAndBuildNumber(ReleaseVersion* release_version) {
   return -1;
 }
 
-std::string GetLocalAppDataPath() {
+bool GetLocalAppDataPath(std::string& outPath) {
   PWSTR path = nullptr;
   HRESULT result = SHGetKnownFolderPath(FOLDERID_LocalAppData, 0, NULL, &path);
-  if (SUCCEEDED(result)) {
-    std::wstring widePath(path);
-    std::string localAppDataPath(widePath.begin(), widePath.end());
-    // The calling process is responsible for freeing this resource
-    // https://learn.microsoft.com/en-us/windows/win32/api/shlobj_core/nf-shlobj_core-shgetknownfolderpath
-    CoTaskMemFree(path);
-    return localAppDataPath;
-  } else {
-    FML_LOG(ERROR) << "Failed to retrieve the local AppData directory.";
-    return "";
+  if (!SUCCEEDED(result)) {
+    return false;
   }
+
+  std::wstring widePath(path);
+  std::string localAppDataPath(widePath.begin(), widePath.end());
+  // The calling process is responsible for freeing this resource
+  // https://learn.microsoft.com/en-us/windows/win32/api/shlobj_core/nf-shlobj_core-shgetknownfolderpath
+  CoTaskMemFree(path);
+  outPath = localAppDataPath;
+  return true;
 }
 
 bool FlutterWindowsEngine::Run(std::string_view entrypoint) {
@@ -320,7 +322,11 @@ bool FlutterWindowsEngine::Run(std::string_view entrypoint) {
   auto shorebird_yaml_contents = std::string("");
   if (filesystem::ReadFileToString(shorebird_yaml_path,
                                    &shorebird_yaml_contents)) {
-    auto code_cache_path = GetLocalAppDataPath();
+    std::string code_cache_path;
+    if (!GetLocalAppDataPath(code_cache_path)) {
+      FML_LOG(ERROR) << "Failed to retrieve the local AppData directory.";
+    }
+
     auto executable_location = fml::paths::GetExecutableDirectoryPath().second;
     auto app_path =
         fml::paths::JoinPaths({executable_location, "data", "app.so"});
