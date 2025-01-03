@@ -143,9 +143,9 @@ std::string ConfigureShorebird(const ShorebirdConfigArgs& args) {
 
   // We only set the base snapshot on iOS for now.
   // TODO: this won't compile as we don't have a settings object here.
-// #if FML_OS_IOS || FML_OS_MACOSX
-//   SetBaseSnapshot(settings);
-// #endif
+  // #if FML_OS_IOS || FML_OS_MACOSX
+  //   SetBaseSnapshot(settings);
+  // #endif
 
   FML_LOG(INFO) << "Checking for active patch";
   char* c_active_path = shorebird_next_boot_patch_path();
