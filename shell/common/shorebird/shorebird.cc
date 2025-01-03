@@ -21,6 +21,7 @@
 #include "flutter/shell/common/shorebird/snapshots_data_handle.h"
 #include "flutter/shell/common/switches.h"
 #include "fml/logging.h"
+#include "shell/platform/embedder/embedder.h"
 #include "third_party/dart/runtime/include/dart_tools_api.h"
 
 #include "third_party/updater/library/include/updater.h"
@@ -80,7 +81,8 @@ FileCallbacks ShorebirdFileCallbacks() {
 }
 
 // FIXME: consolidate this with the other ConfigureShorebird
-std::string ConfigureShorebird(const ShorebirdConfigArgs& args) {
+bool ConfigureShorebird(const ShorebirdConfigArgs& args,
+                        std::string* patch_path) {
   // FIXME: This was commented out because the windows flutter engine does not
   //     populate the settings snapshots. Ideally we would call
   //     ConfigureShorebird from the embedder and this would be uncommented.
@@ -145,7 +147,7 @@ std::string ConfigureShorebird(const ShorebirdConfigArgs& args) {
 
   FML_LOG(INFO) << "Checking for active patch";
   char* c_active_path = shorebird_next_boot_patch_path();
-  std::string active_path = "";
+  std::string active_path;
   if (c_active_path != NULL) {
     active_path = c_active_path;
     shorebird_free_string(c_active_path);
@@ -165,7 +167,7 @@ std::string ConfigureShorebird(const ShorebirdConfigArgs& args) {
   // initialized but never run before the app is quit, could still cause us to
   // suddenly mark-bad a patch that was never actually attempted to launch.
   if (!init_result) {
-    return "";
+    return -1;
   }
 
   // Once start_update_thread is called, the next_boot_patch* functions may
@@ -181,8 +183,8 @@ std::string ConfigureShorebird(const ShorebirdConfigArgs& args) {
         << "Shorebird auto_update disabled, not checking for updates.";
   }
 
-  FML_LOG(INFO) << "Returning active path: " << active_path;
-  return active_path;
+  *patch_path = active_path;
+  return kSuccess;
 }
 
 void ConfigureShorebird(const ShorebirdFlutterProjectArgs& args,

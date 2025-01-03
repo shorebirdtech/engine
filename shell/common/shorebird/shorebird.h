@@ -30,7 +30,8 @@ struct ShorebirdConfigArgs {
         release_version(release_version) {}
 };
 
-std::string ConfigureShorebird(const ShorebirdConfigArgs& args);
+bool ConfigureShorebird(const ShorebirdConfigArgs& args,
+                        std::string* patch_path);
 
 void ConfigureShorebird(const ShorebirdFlutterProjectArgs& args,
                         flutter::Settings& settings);

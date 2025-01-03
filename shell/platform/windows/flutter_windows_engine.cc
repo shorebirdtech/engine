@@ -333,12 +333,15 @@ bool FlutterWindowsEngine::Run(std::string_view entrypoint) {
     flutter::ShorebirdConfigArgs shorebird_args =
         flutter::ShorebirdConfigArgs(code_cache_path, code_cache_path, app_path,
                                      shorebird_yaml_contents, release_version);
-    auto patch_path = flutter::ConfigureShorebird(shorebird_args);
-    if (!patch_path.empty()) {
+    std::string patch_path;
+    auto configure_result = flutter::ConfigureShorebird(shorebird_args, &patch_path);
+    if (configure_result == kSuccess) {
       // If we have a patch installed, we replace the default AOT library path
       // with the patch path here.
       FML_LOG(INFO) << "Setting project patch path: " << patch_path;
       project_->SetAotLibraryPath(patch_path);
+    } else {
+      FML_LOG(ERROR) << "Failed to configure Shorebird.";
     }
   }
 
