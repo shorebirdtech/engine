@@ -12,6 +12,7 @@
 #include <filesystem>
 #include <shared_mutex>
 #include <sstream>
+#include <string>
 
 #include "flutter/fml/logging.h"
 #include "flutter/fml/paths.h"
@@ -310,47 +311,57 @@ bool GetLocalAppDataPath(std::string& outPath) {
   return true;
 }
 
+bool SetUpShorebird(std::string assets_path_string, std::string& patch_path) {
+  auto shorebird_yaml_path =
+      fml::paths::JoinPaths({assets_path_string, "shorebird.yaml"});
+  std::string shorebird_yaml_contents("");
+  if (!filesystem::ReadFileToString(shorebird_yaml_path,
+                                    &shorebird_yaml_contents)) {
+    FML_LOG(ERROR) << "Failed to read shorebird.yaml.";
+    return false;
+  }
+
+  std::string code_cache_path;
+  if (!GetLocalAppDataPath(code_cache_path)) {
+    FML_LOG(ERROR) << "Failed to retrieve the local AppData directory.";
+    return false;
+  }
+
+  auto executable_location = fml::paths::GetExecutableDirectoryPath().second;
+  auto app_path =
+      fml::paths::JoinPaths({executable_location, "data", "app.so"});
+  ReleaseVersion release_version;
+  auto release_version_result =
+      GetReleaseVersionAndBuildNumber(&release_version);
+  if (release_version_result != kSuccess) {
+    FML_LOG(ERROR)
+        << "Failed to retrieve the release version and build number.";
+    return false;
+  }
+
+  ShorebirdConfigArgs shorebird_args(code_cache_path, code_cache_path, app_path,
+                                     shorebird_yaml_contents, release_version);
+  return ConfigureShorebird(shorebird_args, patch_path);
+}
+
 bool FlutterWindowsEngine::Run(std::string_view entrypoint) {
+  std::string assets_path_string = project_->assets_path().u8string();
+  std::string icu_path_string = project_->icu_path().u8string();
+
   if (!project_->HasValidPaths()) {
     FML_LOG(ERROR) << "Missing or unresolvable paths to assets.";
     return false;
   }
-  std::string assets_path_string = project_->assets_path().u8string();
-  std::string icu_path_string = project_->icu_path().u8string();
-  auto shorebird_yaml_path =
-      fml::paths::JoinPaths({assets_path_string, "shorebird.yaml"});
-  auto shorebird_yaml_contents = std::string("");
-  if (filesystem::ReadFileToString(shorebird_yaml_path,
-                                   &shorebird_yaml_contents)) {
-    std::string code_cache_path;
-    if (!GetLocalAppDataPath(code_cache_path)) {
-      FML_LOG(ERROR) << "Failed to retrieve the local AppData directory.";
-    }
 
-    auto executable_location = fml::paths::GetExecutableDirectoryPath().second;
-    auto app_path =
-        fml::paths::JoinPaths({executable_location, "data", "app.so"});
-    ReleaseVersion release_version;
-    auto release_version_result =
-        GetReleaseVersionAndBuildNumber(&release_version);
-    if (release_version_result != kSuccess) {
-      FML_LOG(ERROR)
-          << "Failed to retrieve the release version and build number.";
-    }
-
-    ShorebirdConfigArgs shorebird_args(code_cache_path, code_cache_path,
-                                       app_path, shorebird_yaml_contents,
-                                       release_version);
-    std::string patch_path;
-    auto configure_result = ConfigureShorebird(shorebird_args, patch_path);
-    if (configure_result) {
-      // If we have a patch installed, we replace the default AOT library path
-      // with the patch path here.
-      FML_LOG(INFO) << "Setting project patch path: " << patch_path;
-      project_->SetAotLibraryPath(patch_path);
-    } else {
-      FML_LOG(ERROR) << "Failed to configure Shorebird.";
-    }
+  std::string patch_path;
+  auto setup_shorebird_result = SetUpShorebird(assets_path_string, patch_path);
+  if (setup_shorebird_result) {
+    // If we have a patch installed, we replace the default AOT library path
+    // with the patch path here.
+    FML_LOG(INFO) << "Setting project patch path: " << patch_path;
+    project_->SetAotLibraryPath(patch_path);
+  } else {
+    FML_LOG(ERROR) << "Failed to configure Shorebird.";
   }
 
   // This loads AOT data from the project_'s aot_library_path_.
