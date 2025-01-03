@@ -83,16 +83,6 @@ FileCallbacks ShorebirdFileCallbacks() {
 // FIXME: consolidate this with the other ConfigureShorebird
 bool ConfigureShorebird(const ShorebirdConfigArgs& args,
                         std::string* patch_path) {
-  // FIXME: This was commented out because the windows flutter engine does not
-  //     populate the settings snapshots. Ideally we would call
-  //     ConfigureShorebird from the embedder and this would be uncommented.
-  // If you are crashing here, you probably are running Shorebird in a Debug
-  // config, where the AOT snapshot won't be linked into the process, and thus
-  // lookups will fail.  Change your Scheme to Release to fix:
-  // https://github.com/flutter/flutter/wiki/Debugging-the-engine#debugging-ios-builds-with-xcode
-  // FML_CHECK(DartSnapshot::VMSnapshotFromSettings(settings))
-  //     << "XCode Scheme must be set to Release to use Shorebird";
-
   auto shorebird_updater_dir_name = "shorebird_updater";
 
   auto code_cache_dir = fml::paths::JoinPaths(
@@ -119,10 +109,6 @@ bool ConfigureShorebird(const ShorebirdConfigArgs& args,
     // https://stackoverflow.com/questions/26032039/convert-vectorstring-into-char-c
     std::vector<const char*> c_paths{};
     c_paths.push_back(args.release_app_library_path.c_str());
-    // for (const auto& string : settings.application_library_path) {
-    //   FML_LOG(INFO) << "Pushing " << string << " to c_paths";
-    //   c_paths.push_back(string.c_str());
-    // }
     // Do not modify application_library_path or c_strings will invalidate.
 
     app_parameters.original_libapp_paths = c_paths.data();
