@@ -172,13 +172,6 @@ source_set("common") {
         "//third_party/updater/target/x86_64-apple-darwin/release/libupdater.a",
       ]
     }
-  } else if (host_os == "win" && target_os == "win") {
-    if (target_cpu == "x64") {
-      libs = [
-        "userenv.lib",
-        "//third_party/updater/target/x86_64-pc-windows-msvc/release/updater.lib",
-      ]
-    }
   }
 }
 
