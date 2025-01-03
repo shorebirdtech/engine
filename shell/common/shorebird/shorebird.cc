@@ -79,6 +79,7 @@ FileCallbacks ShorebirdFileCallbacks() {
   };
 }
 
+// FIXME: consolidate this with the other ConfigureShorebird
 std::string ConfigureShorebird(const ShorebirdConfigArgs& args) {
   FML_LOG(INFO) << "In ConfigureShorebird";
   // FIXME: This was commented out because the windows flutter engine does not
@@ -141,9 +142,10 @@ std::string ConfigureShorebird(const ShorebirdConfigArgs& args) {
   // https://github.com/shorebirdtech/shorebird/issues/950
 
   // We only set the base snapshot on iOS for now.
-#if FML_OS_IOS || FML_OS_MACOSX
-  SetBaseSnapshot(settings);
-#endif
+  // TODO: this won't compile as we don't have a settings object here.
+// #if FML_OS_IOS || FML_OS_MACOSX
+//   SetBaseSnapshot(settings);
+// #endif
 
   FML_LOG(INFO) << "Checking for active patch";
   char* c_active_path = shorebird_next_boot_patch_path();
