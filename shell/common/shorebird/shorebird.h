@@ -6,26 +6,28 @@
 
 namespace flutter {
 
+struct ReleaseVersion {
+  std::string version;
+  std::string build_number;
+};
+
 struct ShorebirdConfigArgs {
   std::string code_cache_path;
   std::string app_storage_path;
   std::string release_app_library_path;
-  const std::string& shorebird_yaml;
-  const std::string& version;
-  const std::string& version_code;
+  std::string shorebird_yaml;
+  ReleaseVersion release_version;
 
   ShorebirdConfigArgs(std::string code_cache_path,
                       std::string app_storage_path,
                       std::string release_app_library_path,
-                      const std::string& shorebird_yaml,
-                      const std::string& version,
-                      const std::string& version_code)
+                      std::string shorebird_yaml,
+                      ReleaseVersion release_version)
       : code_cache_path(code_cache_path),
         app_storage_path(app_storage_path),
         release_app_library_path(release_app_library_path),
         shorebird_yaml(shorebird_yaml),
-        version(version),
-        version_code(version_code) {}
+        release_version(release_version) {}
 };
 
 std::string ConfigureShorebird(const ShorebirdConfigArgs& args);

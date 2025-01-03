@@ -244,47 +244,52 @@ bool FlutterWindowsEngine::Run() {
   return Run("");
 }
 
-std::pair<std::string, int> GetReleaseVersionAndBuildNumber() {
-  char modulePath[MAX_PATH];
+int GetReleaseVersionAndBuildNumber(ReleaseVersion* release_version) {
+  char module_path[MAX_PATH];
   // Get the full path of the currently running executable
-  if (GetModuleFileNameA(NULL, modulePath, MAX_PATH) == -1) {
-    return {"Error retrieving module file name.", -1};
+  if (GetModuleFileNameA(NULL, module_path, MAX_PATH) == -1) {
+    return -1;
   }
 
   // Get the size of the version information
   DWORD handle = -1;
-  DWORD versionInfoSize = GetFileVersionInfoSizeA(modulePath, &handle);
-  if (versionInfoSize == -1) {
-    return {"Error retrieving version info size.", -1};
+  DWORD version_info_size = GetFileVersionInfoSizeA(module_path, &handle);
+  if (version_info_size == -1) {
+    return -1;
   }
 
   // Allocate memory for version info
-  std::vector<char> versionData(versionInfoSize);
-  if (!GetFileVersionInfoA(modulePath, handle, versionInfoSize,
-                           versionData.data())) {
-    return {"Error retrieving version info.", -1};
+  std::vector<char> version_data(version_info_size);
+  if (!GetFileVersionInfoA(module_path, handle, version_info_size,
+                           version_data.data())) {
+    return -1;
   }
 
   // Get the version info structure
-  VS_FIXEDFILEINFO* fileInfo = nullptr;
-  UINT fileInfoSize = -1;
-  if (!VerQueryValueA(versionData.data(), "\\",
-                      reinterpret_cast<LPVOID*>(&fileInfo), &fileInfoSize)) {
-    return {"Error querying version info.", -1};
+  VS_FIXEDFILEINFO* file_info = nullptr;
+  UINT file_info_size = -1;
+  if (!VerQueryValueA(version_data.data(), "\\",
+                      reinterpret_cast<LPVOID*>(&file_info), &file_info_size)) {
+                      
+    return -1;
   }
 
-  if (fileInfo) {
+  if (file_info) {
     // Extract version numbers
-    DWORD major = HIWORD(fileInfo->dwFileVersionMS);
-    DWORD minor = LOWORD(fileInfo->dwFileVersionMS);
-    DWORD build = HIWORD(fileInfo->dwFileVersionLS);
+    DWORD major = HIWORD(file_info->dwFileVersionMS);
+    DWORD minor = LOWORD(file_info->dwFileVersionMS);
+    DWORD build = HIWORD(file_info->dwFileVersionLS);
 
     char version[49];
     snprintf(version, sizeof(version), "%lu.%lu.%lu", major, minor, build);
-    return {std::string(version), LOWORD(fileInfo->dwFileVersionLS)};
+    release_version->version = std::string(version);
+    release_version->build_number = std::to_string(LOWORD(file_info->dwFileVersionLS));
+    FML_LOG(ERROR) << "Version: " << release_version->version
+                   << " Build: " << release_version->build_number;
+    return kSuccess;
   }
 
-  return {"No version information available.", -1};
+  return -1;
 }
 
 std::string GetLocalAppDataPath() {
@@ -319,11 +324,15 @@ bool FlutterWindowsEngine::Run(std::string_view entrypoint) {
     auto executable_location = fml::paths::GetExecutableDirectoryPath().second;
     auto app_path =
         fml::paths::JoinPaths({executable_location, "data", "app.so"});
-    auto [release_version, build_number] = GetReleaseVersionAndBuildNumber();
+    ReleaseVersion release_version;
+    auto release_version_result = GetReleaseVersionAndBuildNumber(&release_version);
+    if (release_version_result != kSuccess) {
+      FML_LOG(ERROR) << "Failed to retrieve the release version and build number.";
+    }
 
     flutter::ShorebirdConfigArgs shorebird_args = flutter::ShorebirdConfigArgs(
         code_cache_path, code_cache_path, app_path, shorebird_yaml_contents,
-        release_version, std::to_string(build_number));
+        release_version);
     auto patch_path = flutter::ConfigureShorebird(shorebird_args);
     if (!patch_path.empty()) {
       // If we have a patch installed, we replace the default AOT library path
