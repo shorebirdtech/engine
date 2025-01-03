@@ -81,7 +81,6 @@ FileCallbacks ShorebirdFileCallbacks() {
 
 // FIXME: consolidate this with the other ConfigureShorebird
 std::string ConfigureShorebird(const ShorebirdConfigArgs& args) {
-  FML_LOG(INFO) << "In ConfigureShorebird";
   // FIXME: This was commented out because the windows flutter engine does not
   //     populate the settings snapshots. Ideally we would call
   //     ConfigureShorebird from the embedder and this would be uncommented.
@@ -106,7 +105,6 @@ std::string ConfigureShorebird(const ShorebirdConfigArgs& args) {
   bool init_result;
   // Using a block to make AppParameters lifetime explicit.
   {
-    FML_LOG(INFO) << "Constructing app parameters";
     AppParameters app_parameters;
     // Combine version and version_code into a single string.
     // We could also pass these separately through to the updater if needed.
@@ -128,11 +126,9 @@ std::string ConfigureShorebird(const ShorebirdConfigArgs& args) {
     app_parameters.original_libapp_paths = c_paths.data();
     app_parameters.original_libapp_paths_size = c_paths.size();
 
-    FML_LOG(INFO) << "Calling shorebird_init";
     // shorebird_init copies from app_parameters and shorebirdYaml.
     init_result = shorebird_init(&app_parameters, ShorebirdFileCallbacks(),
                                  args.shorebird_yaml.c_str());
-    FML_LOG(INFO) << "init_result: " << init_result;
   }
 
   // We've decided not to support synchronous updates on launch for now.
@@ -151,7 +147,6 @@ std::string ConfigureShorebird(const ShorebirdConfigArgs& args) {
   char* c_active_path = shorebird_next_boot_patch_path();
   std::string active_path = "";
   if (c_active_path != NULL) {
-    FML_LOG(INFO) << "Found active patch!";
     active_path = c_active_path;
     shorebird_free_string(c_active_path);
     FML_LOG(INFO) << "Shorebird updater: patch path: " << active_path;
@@ -176,9 +171,7 @@ std::string ConfigureShorebird(const ShorebirdConfigArgs& args) {
   // Once start_update_thread is called, the next_boot_patch* functions may
   // change their return values if the shorebird_report_launch_failed
   // function is called.
-  FML_LOG(INFO) << "Reporting launch start";
   shorebird_report_launch_start();
-  FML_LOG(INFO) << "Reported launch start";
 
   if (shorebird_should_auto_update()) {
     FML_LOG(INFO) << "Starting Shorebird update";
