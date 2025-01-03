@@ -168,7 +168,7 @@ bool ConfigureShorebird(const ShorebirdConfigArgs& args,
     FML_LOG(INFO)
         << "Shorebird auto_update disabled, not checking for updates.";
   }
-  
+
   return true;
 }
 
