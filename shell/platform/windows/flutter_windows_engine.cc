@@ -330,13 +330,11 @@ bool FlutterWindowsEngine::Run(std::string_view entrypoint) {
           << "Failed to retrieve the release version and build number.";
     }
 
-    flutter::ShorebirdConfigArgs shorebird_args =
-        flutter::ShorebirdConfigArgs(code_cache_path, code_cache_path, app_path,
+    ShorebirdConfigArgs shorebird_args(code_cache_path, code_cache_path, app_path,
                                      shorebird_yaml_contents, release_version);
     std::string patch_path;
-    auto configure_result =
-        flutter::ConfigureShorebird(shorebird_args, &patch_path);
-    if (configure_result == kSuccess) {
+    auto configure_result = ConfigureShorebird(shorebird_args, patch_path);
+    if (configure_result) {
       // If we have a patch installed, we replace the default AOT library path
       // with the patch path here.
       FML_LOG(INFO) << "Setting project patch path: " << patch_path;

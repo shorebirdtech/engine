@@ -82,7 +82,8 @@ FileCallbacks ShorebirdFileCallbacks() {
 
 // FIXME: consolidate this with the other ConfigureShorebird
 bool ConfigureShorebird(const ShorebirdConfigArgs& args,
-                        std::string* patch_path) {
+                        std::string& patch_path) {
+  patch_path = args.release_app_library_path;
   auto shorebird_updater_dir_name = "shorebird_updater";
 
   auto code_cache_dir = fml::paths::JoinPaths(
@@ -133,11 +134,10 @@ bool ConfigureShorebird(const ShorebirdConfigArgs& args,
 
   FML_LOG(INFO) << "Checking for active patch";
   char* c_active_path = shorebird_next_boot_patch_path();
-  std::string active_path;
   if (c_active_path != NULL) {
-    active_path = c_active_path;
+    patch_path = c_active_path;
     shorebird_free_string(c_active_path);
-    FML_LOG(INFO) << "Shorebird updater: patch path: " << active_path;
+    FML_LOG(INFO) << "Shorebird updater: patch path: " << patch_path;
   } else {
     FML_LOG(INFO) << "Shorebird updater: no active patch.";
   }
@@ -153,7 +153,7 @@ bool ConfigureShorebird(const ShorebirdConfigArgs& args,
   // initialized but never run before the app is quit, could still cause us to
   // suddenly mark-bad a patch that was never actually attempted to launch.
   if (!init_result) {
-    return -1;
+    return false;
   }
 
   // Once start_update_thread is called, the next_boot_patch* functions may
@@ -168,13 +168,12 @@ bool ConfigureShorebird(const ShorebirdConfigArgs& args,
     FML_LOG(INFO)
         << "Shorebird auto_update disabled, not checking for updates.";
   }
-
-  *patch_path = active_path;
-  return kSuccess;
+  
+  return true;
 }
 
 void ConfigureShorebird(const ShorebirdFlutterProjectArgs& args,
-                        flutter::Settings& settings) {
+                        Settings& settings) {
   // cache_path is used for both code_cache and app_storage, as we don't persist
   // any data between releases. args.app_path is appended to
   // the settings.application_library_path vector at this function's call site.

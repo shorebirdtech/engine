@@ -31,14 +31,14 @@ struct ShorebirdConfigArgs {
 };
 
 bool ConfigureShorebird(const ShorebirdConfigArgs& args,
-                        std::string* patch_path);
+                        std::string& patch_path);
 
 void ConfigureShorebird(const ShorebirdFlutterProjectArgs& args,
-                        flutter::Settings& settings);
+                        Settings& settings);
 
 void ConfigureShorebird(std::string code_cache_path,
                         std::string app_storage_path,
-                        flutter::Settings& settings,
+                        Settings& settings,
                         const std::string& shorebird_yaml,
                         const std::string& version,
                         const std::string& version_code);
