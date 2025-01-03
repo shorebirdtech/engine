@@ -312,9 +312,9 @@ bool FlutterWindowsEngine::Run(std::string_view entrypoint) {
   std::string icu_path_string = project_->icu_path().u8string();
   auto shorebird_yaml_path =
       fml::paths::JoinPaths({assets_path_string, "shorebird.yaml"});
-  std::string* shorebird_yaml_contents = new std::string();
+  auto shorebird_yaml_contents = std::string("");
   if (filesystem::ReadFileToString(shorebird_yaml_path,
-                                   shorebird_yaml_contents)) {
+                                   &shorebird_yaml_contents)) {
     auto code_cache_path = GetLocalAppDataPath();
     auto executable_location = fml::paths::GetExecutableDirectoryPath().second;
     auto app_path =
@@ -322,7 +322,7 @@ bool FlutterWindowsEngine::Run(std::string_view entrypoint) {
     auto [release_version, build_number] = GetReleaseVersionAndBuildNumber();
 
     flutter::ShorebirdConfigArgs shorebird_args = flutter::ShorebirdConfigArgs(
-        code_cache_path, code_cache_path, app_path, *shorebird_yaml_contents,
+        code_cache_path, code_cache_path, app_path, shorebird_yaml_contents,
         release_version, std::to_string(build_number));
     auto patch_path = flutter::ConfigureShorebird(shorebird_args);
     if (!patch_path.empty()) {
