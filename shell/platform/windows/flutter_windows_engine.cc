@@ -270,7 +270,6 @@ int GetReleaseVersionAndBuildNumber(ReleaseVersion* release_version) {
   UINT file_info_size = -1;
   if (!VerQueryValueA(version_data.data(), "\\",
                       reinterpret_cast<LPVOID*>(&file_info), &file_info_size)) {
-                      
     return -1;
   }
 
@@ -283,9 +282,8 @@ int GetReleaseVersionAndBuildNumber(ReleaseVersion* release_version) {
     char version[49];
     snprintf(version, sizeof(version), "%lu.%lu.%lu", major, minor, build);
     release_version->version = std::string(version);
-    release_version->build_number = std::to_string(LOWORD(file_info->dwFileVersionLS));
-    FML_LOG(ERROR) << "Version: " << release_version->version
-                   << " Build: " << release_version->build_number;
+    release_version->build_number =
+        std::to_string(LOWORD(file_info->dwFileVersionLS));
     return kSuccess;
   }
 
@@ -325,14 +323,16 @@ bool FlutterWindowsEngine::Run(std::string_view entrypoint) {
     auto app_path =
         fml::paths::JoinPaths({executable_location, "data", "app.so"});
     ReleaseVersion release_version;
-    auto release_version_result = GetReleaseVersionAndBuildNumber(&release_version);
+    auto release_version_result =
+        GetReleaseVersionAndBuildNumber(&release_version);
     if (release_version_result != kSuccess) {
-      FML_LOG(ERROR) << "Failed to retrieve the release version and build number.";
+      FML_LOG(ERROR)
+          << "Failed to retrieve the release version and build number.";
     }
 
     flutter::ShorebirdConfigArgs shorebird_args = flutter::ShorebirdConfigArgs(
-        code_cache_path, code_cache_path, app_path, shorebird_yaml_contents,
-        release_version);
+        code_cache_path, code_cache_path, app_path,
+        shorebird_yaml_contents, release_version);
     auto patch_path = flutter::ConfigureShorebird(shorebird_args);
     if (!patch_path.empty()) {
       // If we have a patch installed, we replace the default AOT library path
