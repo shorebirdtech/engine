@@ -173,6 +173,16 @@ source_set("common") {
       ]
     }
   }
+  
+  # Needed to compile flutter_tester for Windows.
+  if (host_os == "win" && target_os == "win") {
+    if (target_cpu == "x64") {
+      libs = [
+        "userenv.lib",
+        "//third_party/updater/target/x86_64-pc-windows-msvc/release/updater.lib",
+      ]
+    }
+  }
 }
 
 # These are in their own source_set to avoid a dependency cycle with //common/graphics
