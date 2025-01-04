@@ -173,7 +173,7 @@ source_set("common") {
       ]
     }
   }
-  
+
   # Needed to compile flutter_tester for Windows.
   if (host_os == "win" && target_os == "win") {
     if (target_cpu == "x64") {
