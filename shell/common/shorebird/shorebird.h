@@ -2,7 +2,6 @@
 #define FLUTTER_SHELL_COMMON_SHOREBIRD_SHOREBIRD_H_
 
 #include "flutter/common/settings.h"
-#include "shell/platform/embedder/embedder.h"
 
 namespace flutter {
 
@@ -32,9 +31,6 @@ struct ShorebirdConfigArgs {
 
 bool ConfigureShorebird(const ShorebirdConfigArgs& args,
                         std::string& patch_path);
-
-void ConfigureShorebird(const ShorebirdFlutterProjectArgs& args,
-                        Settings& settings);
 
 void ConfigureShorebird(std::string code_cache_path,
                         std::string app_storage_path,
