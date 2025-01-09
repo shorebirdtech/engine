@@ -2310,12 +2310,12 @@ FlutterEngineResult FlutterEngineInitialize(size_t version,
   // some platforms (i.e., Windows) need to to swap out the app path before
   // this point.
   // Begin shorebird
-#if FML_OS_MACOSX
-  if (args->shorebird_args.shorebird_yaml_contents) {
-    settings.application_library_path.push_back(args->shorebird_args.app_path);
-    flutter::ConfigureShorebird(args->shorebird_args, settings);
-  }
-#endif
+  // #if FML_OS_MACOSX
+  //   if (args->shorebird_args.shorebird_yaml_contents) {
+  //     settings.application_library_path.push_back(args->shorebird_args.app_path);
+  //     flutter::ConfigureShorebird(args->shorebird_args, settings);
+  //   }
+  // #endif
   // End shorebird
 
   // Create the engine but don't launch the shell or run the root isolate.
@@ -2337,31 +2337,39 @@ FlutterEngineResult FlutterEngineInitialize(size_t version,
 
 FlutterEngineResult FlutterEngineRunInitialized(
     FLUTTER_API_SYMBOL(FlutterEngine) engine) {
+  FML_LOG(ERROR) << "In FlutterEngineRunInitialized";
   if (!engine) {
     return LOG_EMBEDDER_ERROR(kInvalidArguments, "Engine handle was invalid.");
   }
 
   auto embedder_engine = reinterpret_cast<flutter::EmbedderEngine*>(engine);
 
+  FML_LOG(ERROR) << "Checking is valid";
   // The engine must not already be running. Initialize may only be called
   // once on an engine instance.
   if (embedder_engine->IsValid()) {
     return LOG_EMBEDDER_ERROR(kInvalidArguments, "Engine handle was invalid.");
   }
+  FML_LOG(ERROR) << "Checking is valid done";
 
+  FML_LOG(ERROR) << "Launching shell";
   // Step 1: Launch the shell.
   if (!embedder_engine->LaunchShell()) {
     return LOG_EMBEDDER_ERROR(kInvalidArguments,
                               "Could not launch the engine using supplied "
                               "initialization arguments.");
   }
+  FML_LOG(ERROR) << "Launching shell done";
 
+  FML_LOG(ERROR) << "running NotifyCreated";
   // Step 2: Tell the platform view to initialize itself.
   if (!embedder_engine->NotifyCreated()) {
     return LOG_EMBEDDER_ERROR(kInternalInconsistency,
                               "Could not create platform view components.");
   }
+  FML_LOG(ERROR) << "NotifyCreated done";
 
+  FML_LOG(ERROR) << "running root isolate";
   // Step 3: Launch the root isolate.
   if (!embedder_engine->RunRootIsolate()) {
     return LOG_EMBEDDER_ERROR(
@@ -2369,6 +2377,7 @@ FlutterEngineResult FlutterEngineRunInitialized(
         "Could not run the root isolate of the Flutter application using the "
         "project arguments specified.");
   }
+  FML_LOG(ERROR) << "ran root isolate";
 
   return kSuccess;
 }
@@ -3516,6 +3525,16 @@ FlutterEngineResult FlutterEngineSetNextFrameCallback(
   return kSuccess;
 }
 
+FlutterEngineResult FlutterEngineShorebirdSetBaseSnapshot(
+    FlutterEngineAOTData aot_data) {
+  FML_LOG(ERROR) << "FlutterEngineShorebirdSetBaseSnapshot";
+  Shorebird_SetBaseSnapshots(
+      aot_data->vm_isolate_data, aot_data->vm_isolate_instrs,
+      aot_data->vm_snapshot_data, aot_data->vm_snapshot_instrs);
+  FML_LOG(ERROR) << "FlutterEngineShorebirdSetBaseSnapshot DONE";
+  return kSuccess;
+}
+
 FlutterEngineResult FlutterEngineGetProcAddresses(
     FlutterEngineProcTable* table) {
   if (!table) {
@@ -3570,6 +3589,7 @@ FlutterEngineResult FlutterEngineGetProcAddresses(
   SET_PROC(SetNextFrameCallback, FlutterEngineSetNextFrameCallback);
   SET_PROC(AddView, FlutterEngineAddView);
   SET_PROC(RemoveView, FlutterEngineRemoveView);
+  SET_PROC(ShorebirdSetBaseSnapshot, FlutterEngineShorebirdSetBaseSnapshot);
 #undef SET_PROC
 
   return kSuccess;

@@ -110,7 +110,6 @@ bool ConfigureShorebird(const ShorebirdConfigArgs& args,
     // https://stackoverflow.com/questions/26032039/convert-vectorstring-into-char-c
     std::vector<const char*> c_paths{};
     c_paths.push_back(args.release_app_library_path.c_str());
-    // Do not modify application_library_path or c_strings will invalidate.
 
     app_parameters.original_libapp_paths = c_paths.data();
     app_parameters.original_libapp_paths_size = c_paths.size();
@@ -125,12 +124,6 @@ bool ConfigureShorebird(const ShorebirdConfigArgs& args,
   // instead we will provide examples of how to build a custom update UI
   // within Dart, including updating as part of login, etc.
   // https://github.com/shorebirdtech/shorebird/issues/950
-
-  // We only set the base snapshot on iOS for now.
-  // TODO: this won't compile as we don't have a settings object here.
-  // #if FML_OS_IOS || FML_OS_MACOSX
-  //   SetBaseSnapshot(settings);
-  // #endif
 
   FML_LOG(INFO) << "Checking for active patch";
   char* c_active_path = shorebird_next_boot_patch_path();

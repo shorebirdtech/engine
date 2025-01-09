@@ -123,6 +123,7 @@ source_set("flutter_framework_source") {
     ":macos_gpu_configuration",
     "//flutter/flow:flow",
     "//flutter/fml",
+    "//flutter/shell/common/shorebird",
     "//flutter/shell/platform/common:common_cpp_accessibility",
     "//flutter/shell/platform/common:common_cpp_enums",
     "//flutter/shell/platform/common:common_cpp_input",

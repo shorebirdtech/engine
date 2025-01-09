@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #import "flutter/shell/platform/darwin/macos/framework/Headers/FlutterEngine.h"
+#include <Foundation/Foundation.h>
 #import "flutter/shell/platform/darwin/macos/framework/Source/FlutterEngine_Internal.h"
 
 #include <algorithm>
@@ -11,6 +12,7 @@
 
 #include "flutter/common/constants.h"
 #include "flutter/fml/paths.h"
+#include "flutter/shell/common/shorebird/shorebird.h"
 #include "flutter/shell/platform/common/app_lifecycle_state.h"
 #include "flutter/shell/platform/common/engine_switches.h"
 #include "flutter/shell/platform/embedder/embedder.h"
@@ -703,6 +705,44 @@ static void SetThreadPriority(FlutterThreadPriority priority) {
   flutterArguments.shorebird_args.shorebird_yaml_contents = shorebirdYamlContents.UTF8String;
 
   FlutterRendererConfig rendererConfig = [_renderer createRendererConfig];
+
+  NSLog(@"Starting to configure shorebird");
+  {
+    NSString* bundlePath =
+        [[NSBundle bundleWithURL:[NSBundle.mainBundle.privateFrameworksURL
+                                     URLByAppendingPathComponent:@"App.framework"]] bundlePath];
+    bundlePath = [bundlePath stringByAppendingString:@"/App"];
+    NSString* assetsPath = _project.assetsPath;
+    NSURL* shorebirdYamlPath = [NSURL URLWithString:@"shorebird.yaml"
+                                      relativeToURL:[NSURL fileURLWithPath:assetsPath]];
+    NSString* shorebirdYamlContents = [NSString stringWithContentsOfURL:shorebirdYamlPath
+                                                               encoding:NSUTF8StringEncoding
+                                                                  error:nil];
+    NSString* appVersion =
+        [NSBundle.mainBundle objectForInfoDictionaryKey:@"CFBundleShortVersionString"];
+    NSString* appBuildNumber = [NSBundle.mainBundle objectForInfoDictionaryKey:@"CFBundleVersion"];
+
+    std::string cache_path =
+        fml::paths::JoinPaths({getenv("HOME"), "Library", "Application Support", "shorebird"});
+
+    NSLog(@"Constructing shorebird args");
+    flutter::ShorebirdConfigArgs shorebirdArgs(cache_path, cache_path,
+                                               std::string(bundlePath.UTF8String),
+                                               std::string(shorebirdYamlContents.UTF8String),
+                                               {
+                                                   std::string(appVersion.UTF8String),
+                                                   std::string(appBuildNumber.UTF8String),
+                                               });
+    NSLog(@"Constructed shorebird args");
+    std::string _patch_path = "";
+    NSLog(@"calling configure shorebird");
+    if (!flutter::ConfigureShorebird(shorebirdArgs, _patch_path)) {
+      NSLog(@"Failed to configure shorebird");
+    }
+    _embedderAPI.ShorebirdSetBaseSnapshot(_aotData);
+    NSLog(@"Done configuring shorebird!");
+  }
+
   FlutterEngineResult result = _embedderAPI.Initialize(
       FLUTTER_ENGINE_VERSION, &rendererConfig, &flutterArguments, (__bridge void*)(self), &_engine);
   if (result != kSuccess) {
