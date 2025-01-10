@@ -2307,7 +2307,9 @@ FlutterEngineResult FlutterEngineInitialize(size_t version,
   }
 
 #if SHOREBIRD_USES_MIXED_MODE
+  FML_LOG(INFO) << "Using mixed mode, setting base snapshot";
   flutter::SetBaseSnapshot(settings);
+  FML_LOG(INFO) << "Set base snapshot";
 #endif
 
   // Create the engine but don't launch the shell or run the root isolate.

@@ -54,8 +54,13 @@ void SetBaseSnapshot(Settings& settings) {
   // These mappings happen to be to static data in the App.framework, but
   // we still need to seem to hold onto the DartSnapshot objects to keep
   // the mappings alive.
+  FML_LOG(INFO) << "Setting base snapshots";
+  FML_LOG(INFO) << "getting vm snapshot";
+  // segfaults on the next line
   vm_snapshot = DartSnapshot::VMSnapshotFromSettings(settings);
+  FML_LOG(INFO) << "getting isolate snapshot";
   isolate_snapshot = DartSnapshot::IsolateSnapshotFromSettings(settings);
+  FML_LOG(INFO) << "Calling Shorebird_SetBaseSnapshots";
   Shorebird_SetBaseSnapshots(isolate_snapshot->GetDataMapping(),
                              isolate_snapshot->GetInstructionsMapping(),
                              vm_snapshot->GetDataMapping(),
