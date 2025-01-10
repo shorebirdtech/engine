@@ -78,6 +78,10 @@ if (is_ios || is_mac || is_android || is_win) {
 }
 
 if (is_ios || is_mac) {
+  feature_defines_list += [ "SHOREBIRD_USES_MIXED_MODE=1" ]
+}
+
+if (is_ios || is_mac) {
   flutter_cflags_objc = [
     "-Werror=overriding-method-mismatch",
     "-Werror=undeclared-selector",

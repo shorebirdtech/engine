@@ -682,31 +682,8 @@ static void SetThreadPriority(FlutterThreadPriority priority) {
     [engine onVSync:baton];
   };
 
-  NSString* bundlePath =
-      [[NSBundle bundleWithURL:[NSBundle.mainBundle.privateFrameworksURL
-                                   URLByAppendingPathComponent:@"App.framework"]] bundlePath];
-  bundlePath = [bundlePath stringByAppendingString:@"/App"];
-  flutterArguments.shorebird_args.app_path = bundlePath.UTF8String;
-  NSString* assetsPath = _project.assetsPath;
-  NSURL* shorebirdYamlPath = [NSURL URLWithString:@"shorebird.yaml"
-                                    relativeToURL:[NSURL fileURLWithPath:assetsPath]];
-  NSString* shorebirdYamlContents = [NSString stringWithContentsOfURL:shorebirdYamlPath
-                                                             encoding:NSUTF8StringEncoding
-                                                                error:nil];
-  NSString* appVersion =
-      [NSBundle.mainBundle objectForInfoDictionaryKey:@"CFBundleShortVersionString"];
-  NSString* appBuildNumber = [NSBundle.mainBundle objectForInfoDictionaryKey:@"CFBundleVersion"];
-  flutterArguments.shorebird_args.app_version = appVersion.UTF8String;
-  flutterArguments.shorebird_args.app_build_number = appBuildNumber.UTF8String;
-
-  std::string cache_path =
-      fml::paths::JoinPaths({getenv("HOME"), "Library", "Application Support", "shorebird"});
-  flutterArguments.shorebird_args.cache_path = cache_path.c_str();
-  flutterArguments.shorebird_args.shorebird_yaml_contents = shorebirdYamlContents.UTF8String;
-
   FlutterRendererConfig rendererConfig = [_renderer createRendererConfig];
 
-  NSLog(@"Starting to configure shorebird");
   {
     NSString* bundlePath =
         [[NSBundle bundleWithURL:[NSBundle.mainBundle.privateFrameworksURL
@@ -739,7 +716,6 @@ static void SetThreadPriority(FlutterThreadPriority priority) {
     if (!flutter::ConfigureShorebird(shorebirdArgs, _patch_path)) {
       NSLog(@"Failed to configure shorebird");
     }
-    _embedderAPI.ShorebirdSetBaseSnapshot(_aotData);
     NSLog(@"Done configuring shorebird!");
   }
 

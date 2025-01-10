@@ -29,6 +29,8 @@ struct ShorebirdConfigArgs {
         release_version(release_version) {}
 };
 
+void SetBaseSnapshot(Settings& settings);
+
 bool ConfigureShorebird(const ShorebirdConfigArgs& args,
                         std::string& patch_path);
 

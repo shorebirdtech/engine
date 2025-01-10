@@ -2306,6 +2306,10 @@ FlutterEngineResult FlutterEngineInitialize(size_t version,
         "Could not infer the Flutter project to run from given arguments.");
   }
 
+#if SHOREBIRD_USES_MIXED_MODE
+  flutter::SetBaseSnapshot(settings);
+#endif
+
   // Create the engine but don't launch the shell or run the root isolate.
   auto embedder_engine = std::make_unique<flutter::EmbedderEngine>(
       std::move(thread_host),               //
@@ -3513,16 +3517,6 @@ FlutterEngineResult FlutterEngineSetNextFrameCallback(
   return kSuccess;
 }
 
-FlutterEngineResult FlutterEngineShorebirdSetBaseSnapshot(
-    FlutterEngineAOTData aot_data) {
-  FML_LOG(ERROR) << "FlutterEngineShorebirdSetBaseSnapshot";
-  Shorebird_SetBaseSnapshots(
-      aot_data->vm_isolate_data, aot_data->vm_isolate_instrs,
-      aot_data->vm_snapshot_data, aot_data->vm_snapshot_instrs);
-  FML_LOG(ERROR) << "FlutterEngineShorebirdSetBaseSnapshot DONE";
-  return kSuccess;
-}
-
 FlutterEngineResult FlutterEngineGetProcAddresses(
     FlutterEngineProcTable* table) {
   if (!table) {
@@ -3577,7 +3571,6 @@ FlutterEngineResult FlutterEngineGetProcAddresses(
   SET_PROC(SetNextFrameCallback, FlutterEngineSetNextFrameCallback);
   SET_PROC(AddView, FlutterEngineAddView);
   SET_PROC(RemoveView, FlutterEngineRemoveView);
-  SET_PROC(ShorebirdSetBaseSnapshot, FlutterEngineShorebirdSetBaseSnapshot);
 #undef SET_PROC
 
   return kSuccess;
