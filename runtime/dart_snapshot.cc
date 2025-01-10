@@ -57,7 +57,7 @@ static std::shared_ptr<const fml::Mapping> SearchMapping(
     const std::vector<std::string>& native_library_path,
     const char* native_library_symbol_name,
     bool is_executable) {
-#if FML_OS_IOS || FML_OS_MACOSX
+#if SHOREBIRD_USES_MIXED_MODE
   // Detect when we're trying to load a Shorebird patch.
   auto patch_path = native_library_path.front();
   bool is_patch = patch_path.find(".vmcode") != std::string::npos;
