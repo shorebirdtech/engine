@@ -603,7 +603,7 @@ static void SetThreadPriority(FlutterThreadPriority priority) {
       [NSBundle.mainBundle objectForInfoDictionaryKey:@"CFBundleShortVersionString"];
   NSString* appBuildNumber = [NSBundle.mainBundle objectForInfoDictionaryKey:@"CFBundleVersion"];
   // flutterArguments.shorebird_args.app_version = appVersion.UTF8String;
-  // flutterArguments.shorebird_args.app_build_number = 
+  // flutterArguments.shorebird_args.app_build_number =
   //   appBuildNumber.UTF8String;
 
   std::string cache_path =
@@ -831,7 +831,7 @@ static void SetThreadPriority(FlutterThreadPriority priority) {
 
   if (![fileManager fileExistsAtPath:patchPath isDirectory:&isDirOut]) {
     NSLog(
-      @"[shorebird] returning early from loadAOTDataFromPatch because patchPath does not exist");
+        @"[shorebird] returning early from loadAOTDataFromPatch because patchPath does not exist");
     return;
   }
 
