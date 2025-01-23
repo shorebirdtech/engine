@@ -83,7 +83,7 @@ FileCallbacks ShorebirdFileCallbacks() {
 // FIXME: consolidate this with the other ConfigureShorebird
 bool ConfigureShorebird(const ShorebirdConfigArgs& args,
                         std::string& patch_path) {
-  patch_path = args.release_app_library_path;
+  patch_path = "";  // args.release_app_library_path;
   auto shorebird_updater_dir_name = "shorebird_updater";
 
   auto code_cache_dir = fml::paths::JoinPaths(
@@ -239,7 +239,7 @@ void ConfigureShorebird(std::string code_cache_path,
   // https://github.com/shorebirdtech/shorebird/issues/950
 
   // We only set the base snapshot on iOS for now.
-#if FML_OS_IOS || FML_OS_MACOSX
+#if SHOREBIRD_USE_LINKER
   SetBaseSnapshot(settings);
 #endif
 
@@ -249,7 +249,7 @@ void ConfigureShorebird(std::string code_cache_path,
     shorebird_free_string(c_active_path);
     FML_LOG(INFO) << "Shorebird updater: active path: " << active_path;
 
-#if FML_OS_IOS || FML_OS_MACOSX
+#if SHOREBIRD_USE_LINKER
     // On iOS we add the patch to the front of the list instead of clearing
     // the list, to allow dart_shapshot.cc to still find the base snapshot
     // for the vm isolate.

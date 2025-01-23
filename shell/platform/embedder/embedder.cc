@@ -2309,8 +2309,12 @@ FlutterEngineResult FlutterEngineInitialize(size_t version,
   // FIXME: This is probably the wrong place to call ConfigureShorebird, as
   // some platforms (i.e., Windows) need to to swap out the app path before
   // this point.
+  //
+  // Targets that do not use mixed-mode need to call ConfigureShorebird in their
+  // platform-specific code, prior to calling this function.
+  //
   // Begin shorebird
-#if FML_OS_MACOSX
+#if SHOREBIRD_USE_LINKER
   if (args->shorebird_args.shorebird_yaml_contents) {
     settings.application_library_path.push_back(args->shorebird_args.app_path);
     flutter::ConfigureShorebird(args->shorebird_args, settings);
