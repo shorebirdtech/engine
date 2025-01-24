@@ -223,7 +223,7 @@ void ConfigureShorebird(std::string code_cache_path,
   // https://github.com/shorebirdtech/shorebird/issues/950
 
   // We only set the base snapshot on iOS for now.
-#if SHOREBIRD_USE_LINKER
+#if SHOREBIRD_USE_INTERPRETER
   SetBaseSnapshot(settings);
 #endif
 
@@ -233,7 +233,7 @@ void ConfigureShorebird(std::string code_cache_path,
     shorebird_free_string(c_active_path);
     FML_LOG(INFO) << "Shorebird updater: active path: " << active_path;
 
-#if SHOREBIRD_USE_LINKER
+#if SHOREBIRD_USE_INTERPRETER
     // On iOS we add the patch to the front of the list instead of clearing
     // the list, to allow dart_shapshot.cc to still find the base snapshot
     // for the vm isolate.
