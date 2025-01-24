@@ -586,13 +586,12 @@ static void SetThreadPriority(FlutterThreadPriority priority) {
   }
 }
 
-- (BOOL)setUpNonLinkerShorebird:(NSString**)patchPath {
+- (BOOL)configureShorebird:(NSString**)patchPath {
   NSLog(@"[shorebird] setting up non-linker shorebird");
   NSString* bundlePath =
       [[NSBundle bundleWithURL:[NSBundle.mainBundle.privateFrameworksURL
                                    URLByAppendingPathComponent:@"App.framework"]] bundlePath];
   bundlePath = [bundlePath stringByAppendingString:@"/App"];
-  // flutterArguments.shorebird_args.app_path = bundlePath.UTF8String;
   NSString* assetsPath = _project.assetsPath;
   NSURL* shorebirdYamlPath = [NSURL URLWithString:@"shorebird.yaml"
                                     relativeToURL:[NSURL fileURLWithPath:assetsPath]];
@@ -602,16 +601,8 @@ static void SetThreadPriority(FlutterThreadPriority priority) {
   NSString* appVersion =
       [NSBundle.mainBundle objectForInfoDictionaryKey:@"CFBundleShortVersionString"];
   NSString* appBuildNumber = [NSBundle.mainBundle objectForInfoDictionaryKey:@"CFBundleVersion"];
-  // flutterArguments.shorebird_args.app_version = appVersion.UTF8String;
-  // flutterArguments.shorebird_args.app_build_number =
-  //   appBuildNumber.UTF8String;
-
   std::string cache_path =
       fml::paths::JoinPaths({getenv("HOME"), "Library", "Application Support", "shorebird"});
-  // flutterArguments.shorebird_args.cache_path = cache_path.c_str();
-  // flutterArguments.shorebird_args.shorebird_yaml_contents =
-  //   shorebirdYamlContents.UTF8String;
-
   flutter::ReleaseVersion release_version = {appVersion.UTF8String, appBuildNumber.UTF8String};
   flutter::ShorebirdConfigArgs shorebird_args(cache_path, cache_path, bundlePath.UTF8String,
                                               shorebirdYamlContents.UTF8String, release_version);
@@ -707,46 +698,6 @@ static void SetThreadPriority(FlutterThreadPriority priority) {
       .thread_priority_setter = SetThreadPriority};
   flutterArguments.custom_task_runners = &custom_task_runners;
 
-  NSString* bundlePath =
-      [[NSBundle bundleWithURL:[NSBundle.mainBundle.privateFrameworksURL
-                                   URLByAppendingPathComponent:@"App.framework"]] bundlePath];
-  bundlePath = [bundlePath stringByAppendingString:@"/App"];
-  flutterArguments.shorebird_args.app_path = bundlePath.UTF8String;
-  NSString* assetsPath = _project.assetsPath;
-  NSURL* shorebirdYamlPath = [NSURL URLWithString:@"shorebird.yaml"
-                                    relativeToURL:[NSURL fileURLWithPath:assetsPath]];
-  NSString* shorebirdYamlContents = [NSString stringWithContentsOfURL:shorebirdYamlPath
-                                                             encoding:NSUTF8StringEncoding
-                                                                error:nil];
-  NSString* appVersion =
-      [NSBundle.mainBundle objectForInfoDictionaryKey:@"CFBundleShortVersionString"];
-  NSString* appBuildNumber = [NSBundle.mainBundle objectForInfoDictionaryKey:@"CFBundleVersion"];
-  flutterArguments.shorebird_args.app_version = appVersion.UTF8String;
-  flutterArguments.shorebird_args.app_build_number = appBuildNumber.UTF8String;
-
-  std::string cache_path =
-      fml::paths::JoinPaths({getenv("HOME"), "Library", "Application Support", "shorebird"});
-  flutterArguments.shorebird_args.cache_path = cache_path.c_str();
-  flutterArguments.shorebird_args.shorebird_yaml_contents = shorebirdYamlContents.UTF8String;
-
-#if SHOREBIRD_USE_LINKER
-  NSLog(@"[shorebird] Using Shorebird linker");
-  FML_LOG(INFO) << "[shorebird][fml] Using shorebird linker";
-  [self loadAOTData:_project.assetsPath];
-#else
-  NSLog(@"[shorebird] Not using shorebird linker");
-  FML_LOG(INFO) << "[shorebird][fml] Not using shorebird linker";
-  NSString* patchPath;
-  auto configureShorebirdRes = [self setUpNonLinkerShorebird:&patchPath];
-  if (configureShorebirdRes && ![patchPath isEqualToString:@""]) {
-    NSLog(@"[shorebird] successfully configured shorebird, loading aot data from %@", patchPath);
-    [self loadAOTDataFromPatch:patchPath];
-  } else {
-    NSLog(@"[shorebird] failed to configure shorebird");
-    [self loadAOTData:_project.assetsPath];
-  }
-#endif
-
   if (_aotData) {
     flutterArguments.aot_data = _aotData;
   }
@@ -764,6 +715,17 @@ static void SetThreadPriority(FlutterThreadPriority priority) {
   };
 
   FlutterRendererConfig rendererConfig = [_renderer createRendererConfig];
+
+  NSString* patchPath;
+  auto configureShorebirdRes = [self configureShorebird:&patchPath];
+  if (configureShorebirdRes && ![patchPath isEqualToString:@""]) {
+    NSLog(@"[shorebird] successfully configured shorebird, loading aot data from %@", patchPath);
+    [self loadAOTDataFromPatch:patchPath];
+  } else {
+    NSLog(@"[shorebird] failed to configure shorebird");
+    [self loadAOTData:_project.assetsPath];
+  }
+
   FlutterEngineResult result = _embedderAPI.Initialize(
       FLUTTER_ENGINE_VERSION, &rendererConfig, &flutterArguments, (__bridge void*)(self), &_engine);
   if (result != kSuccess) {
@@ -839,16 +801,10 @@ static void SetThreadPriority(FlutterThreadPriority priority) {
   source.type = kFlutterEngineAOTDataSourceTypeElfPath;
   source.elf_path = [patchPath cStringUsingEncoding:NSUTF8StringEncoding];
 
-  NSLog(@"!!!");
-  NSLog(@"!!!");
   NSLog(@"Creating AOT data from patchPath: %@", patchPath);
-  NSLog(@"!!!");
-  NSLog(@"!!!");
   auto result = _embedderAPI.CreateAOTData(&source, &_aotData);
   if (result != kSuccess) {
     NSLog(@"Failed to load AOT data from: %@", patchPath);
-  } else {
-    NSLog(@"[shorebird] created AOT data");
   }
 }
 

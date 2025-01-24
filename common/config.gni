@@ -81,10 +81,6 @@ if (is_ios) {
   feature_defines_list += [ "SHOREBIRD_USE_LINKER=1" ]
 }
 
-if (is_mac && (target_cpu == "arm" || target_cpu == "arm64")) {
-  feature_defines_list += [ "SHOREBIRD_USE_LINKER=1" ]
-}
-
 if (is_ios || is_mac) {
   flutter_cflags_objc = [
     "-Werror=overriding-method-mismatch",
