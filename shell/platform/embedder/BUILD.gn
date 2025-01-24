@@ -110,7 +110,6 @@ template("embedder_source_set") {
       "//flutter/lib/ui",
       "//flutter/runtime:libdart",
       "//flutter/shell/common",
-      "//flutter/shell/common/shorebird",
       "//flutter/skia",
       "//flutter/third_party/tonic",
     ]

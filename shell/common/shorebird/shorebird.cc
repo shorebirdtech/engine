@@ -126,12 +126,6 @@ bool ConfigureShorebird(const ShorebirdConfigArgs& args,
   // within Dart, including updating as part of login, etc.
   // https://github.com/shorebirdtech/shorebird/issues/950
 
-  // We only set the base snapshot on iOS for now.
-  // TODO: this won't compile as we don't have a settings object here.
-  // #if FML_OS_IOS || FML_OS_MACOSX
-  //   SetBaseSnapshot(settings);
-  // #endif
-
   FML_LOG(INFO) << "Checking for active patch";
   char* c_active_path = shorebird_next_boot_patch_path();
   if (c_active_path != NULL) {
@@ -170,16 +164,6 @@ bool ConfigureShorebird(const ShorebirdConfigArgs& args,
   }
 
   return true;
-}
-
-void ConfigureShorebird(const ShorebirdFlutterProjectArgs& args,
-                        Settings& settings) {
-  // cache_path is used for both code_cache and app_storage, as we don't persist
-  // any data between releases. args.app_path is appended to
-  // the settings.application_library_path vector at this function's call site.
-  ConfigureShorebird(args.cache_path, args.cache_path, settings,
-                     args.shorebird_yaml_contents, args.app_version,
-                     args.app_build_number);
 }
 
 void ConfigureShorebird(std::string code_cache_path,
@@ -239,7 +223,7 @@ void ConfigureShorebird(std::string code_cache_path,
   // https://github.com/shorebirdtech/shorebird/issues/950
 
   // We only set the base snapshot on iOS for now.
-#if FML_OS_IOS || FML_OS_MACOSX
+#if SHOREBIRD_USE_INTERPRETER
   SetBaseSnapshot(settings);
 #endif
 
@@ -249,7 +233,7 @@ void ConfigureShorebird(std::string code_cache_path,
     shorebird_free_string(c_active_path);
     FML_LOG(INFO) << "Shorebird updater: active path: " << active_path;
 
-#if FML_OS_IOS || FML_OS_MACOSX
+#if SHOREBIRD_USE_INTERPRETER
     // On iOS we add the patch to the front of the list instead of clearing
     // the list, to allow dart_shapshot.cc to still find the base snapshot
     // for the vm isolate.
