@@ -767,8 +767,7 @@ static void SetThreadPriority(FlutterThreadPriority priority) {
   NSFileManager* fileManager = [NSFileManager defaultManager];
 
   if (![fileManager fileExistsAtPath:elfPath isDirectory:&isDirOut]) {
-    FML_LOG(INFO) << "in loadAOTData, elfPath does not exist: "
-        << elfPath.UTF8String;
+    FML_LOG(INFO) << "in loadAOTData, elfPath does not exist: " << elfPath.UTF8String;
     return;
   }
 
