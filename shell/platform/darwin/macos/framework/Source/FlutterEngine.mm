@@ -698,6 +698,19 @@ static void SetThreadPriority(FlutterThreadPriority priority) {
       .thread_priority_setter = SetThreadPriority};
   flutterArguments.custom_task_runners = &custom_task_runners;
 
+  NSString* elfPath;
+  BOOL configureShorebirdRes = [self configureShorebird:&elfPath];
+  if (!configureShorebirdRes) {
+    // No patch exists, or we failed to configure shorebird. This is a fallback.
+    // Upstream, this code lives in -(void)loadAOTData:.
+    //
+    // This is the location where the test fixture places the snapshot file.
+    // For applications built by Flutter tool, this is in "App.framework".
+    elfPath = [NSString pathWithComponents:@[ _project.assetsPath, @"app_elf_snapshot.so" ]];
+  }
+
+  [self loadAOTData:elfPath];
+
   if (_aotData) {
     flutterArguments.aot_data = _aotData;
   }
@@ -715,16 +728,6 @@ static void SetThreadPriority(FlutterThreadPriority priority) {
   };
 
   FlutterRendererConfig rendererConfig = [_renderer createRendererConfig];
-
-  NSString* patchPath;
-  auto configureShorebirdRes = [self configureShorebird:&patchPath];
-  if (configureShorebirdRes && ![patchPath isEqualToString:@""]) {
-    NSLog(@"[shorebird] successfully configured shorebird, loading aot data from %@", patchPath);
-    [self loadAOTDataFromPatch:patchPath];
-  } else {
-    NSLog(@"[shorebird] failed to configure shorebird");
-    [self loadAOTData:_project.assetsPath];
-  }
 
   FlutterEngineResult result = _embedderAPI.Initialize(
       FLUTTER_ENGINE_VERSION, &rendererConfig, &flutterArguments, (__bridge void*)(self), &_engine);
@@ -755,9 +758,7 @@ static void SetThreadPriority(FlutterThreadPriority priority) {
   return YES;
 }
 
-- (void)loadAOTData:(NSString*)assetsDir {
-  NSLog(@"[shorebird] loading AOT data from assetsDir: %@", assetsDir);
-  FML_LOG(INFO) << "[shorebird][fml] Loading AOT data from assetsDir: " << assetsDir.UTF8String;
+- (void)loadAOTData:(NSString*)elfPath {
   if (!_embedderAPI.RunsAOTCompiledDartCode()) {
     return;
   }
@@ -765,13 +766,9 @@ static void SetThreadPriority(FlutterThreadPriority priority) {
   BOOL isDirOut = false;  // required for NSFileManager fileExistsAtPath.
   NSFileManager* fileManager = [NSFileManager defaultManager];
 
-  // This is the location where the test fixture places the snapshot file.
-  // For applications built by Flutter tool, this is in "App.framework".
-  NSString* elfPath = [NSString pathWithComponents:@[ assetsDir, @"app_elf_snapshot.so" ]];
-  FML_LOG(INFO) << "elf path is " << elfPath.UTF8String;
-
   if (![fileManager fileExistsAtPath:elfPath isDirectory:&isDirOut]) {
-    FML_LOG(INFO) << "[shorebird][fml] elfPath does not exist: " << elfPath.UTF8String;
+    FML_LOG(INFO) << "in loadAOTData, elfPath does not exist: "
+        << elfPath.UTF8String;
     return;
   }
 
@@ -782,29 +779,6 @@ static void SetThreadPriority(FlutterThreadPriority priority) {
   auto result = _embedderAPI.CreateAOTData(&source, &_aotData);
   if (result != kSuccess) {
     NSLog(@"Failed to load AOT data from: %@", elfPath);
-  }
-}
-
-- (void)loadAOTDataFromPatch:(NSString*)patchPath {
-  NSLog(@"[shorebird] loading AOT data from patchPath: %@", patchPath);
-  FML_LOG(INFO) << "[shorebird][fml] Loading AOT data from patchPath: " << patchPath.UTF8String;
-  BOOL isDirOut = false;  // required for NSFileManager fileExistsAtPath.
-  NSFileManager* fileManager = [NSFileManager defaultManager];
-
-  if (![fileManager fileExistsAtPath:patchPath isDirectory:&isDirOut]) {
-    NSLog(
-        @"[shorebird] returning early from loadAOTDataFromPatch because patchPath does not exist");
-    return;
-  }
-
-  FlutterEngineAOTDataSource source = {};
-  source.type = kFlutterEngineAOTDataSourceTypeElfPath;
-  source.elf_path = [patchPath cStringUsingEncoding:NSUTF8StringEncoding];
-
-  NSLog(@"Creating AOT data from patchPath: %@", patchPath);
-  auto result = _embedderAPI.CreateAOTData(&source, &_aotData);
-  if (result != kSuccess) {
-    NSLog(@"Failed to load AOT data from: %@", patchPath);
   }
 }
 

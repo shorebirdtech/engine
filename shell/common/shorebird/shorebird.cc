@@ -83,7 +83,7 @@ FileCallbacks ShorebirdFileCallbacks() {
 // FIXME: consolidate this with the other ConfigureShorebird
 bool ConfigureShorebird(const ShorebirdConfigArgs& args,
                         std::string& patch_path) {
-  patch_path = "";  // args.release_app_library_path;
+  patch_path = args.release_app_library_path;
   auto shorebird_updater_dir_name = "shorebird_updater";
 
   auto code_cache_dir = fml::paths::JoinPaths(
@@ -125,12 +125,6 @@ bool ConfigureShorebird(const ShorebirdConfigArgs& args,
   // instead we will provide examples of how to build a custom update UI
   // within Dart, including updating as part of login, etc.
   // https://github.com/shorebirdtech/shorebird/issues/950
-
-  // We only set the base snapshot on iOS for now.
-  // TODO: this won't compile as we don't have a settings object here.
-  // #if FML_OS_IOS || FML_OS_MACOSX
-  //   SetBaseSnapshot(settings);
-  // #endif
 
   FML_LOG(INFO) << "Checking for active patch";
   char* c_active_path = shorebird_next_boot_patch_path();
