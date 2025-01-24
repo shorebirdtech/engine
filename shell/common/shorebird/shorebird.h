@@ -33,9 +33,6 @@ struct ShorebirdConfigArgs {
 bool ConfigureShorebird(const ShorebirdConfigArgs& args,
                         std::string& patch_path);
 
-void ConfigureShorebird(const ShorebirdFlutterProjectArgs& args,
-                        Settings& settings);
-
 void ConfigureShorebird(std::string code_cache_path,
                         std::string app_storage_path,
                         Settings& settings,

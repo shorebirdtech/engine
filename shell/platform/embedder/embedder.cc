@@ -50,7 +50,6 @@ extern const intptr_t kPlatformStrongDillSize;
 #include "flutter/fml/paths.h"
 #include "flutter/fml/trace_event.h"
 #include "flutter/shell/common/rasterizer.h"
-#include "flutter/shell/common/shorebird/shorebird.h"
 #include "flutter/shell/common/switches.h"
 #include "flutter/shell/platform/embedder/embedder.h"
 #include "flutter/shell/platform/embedder/embedder_engine.h"
@@ -2305,18 +2304,6 @@ FlutterEngineResult FlutterEngineInitialize(size_t version,
         kInvalidArguments,
         "Could not infer the Flutter project to run from given arguments.");
   }
-
-  // FIXME: This is probably the wrong place to call ConfigureShorebird, as
-  // some platforms (i.e., Windows) need to to swap out the app path before
-  // this point.
-  // Begin shorebird
-#if FML_OS_MACOSX
-  if (args->shorebird_args.shorebird_yaml_contents) {
-    settings.application_library_path.push_back(args->shorebird_args.app_path);
-    flutter::ConfigureShorebird(args->shorebird_args, settings);
-  }
-#endif
-  // End shorebird
 
   // Create the engine but don't launch the shell or run the root isolate.
   auto embedder_engine = std::make_unique<flutter::EmbedderEngine>(
