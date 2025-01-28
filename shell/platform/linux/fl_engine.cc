@@ -634,6 +634,8 @@ gboolean fl_engine_start(FlEngine* self, GError** error) {
   args.compositor = &compositor;
 
   if (self->embedder_api.RunsAOTCompiledDartCode()) {
+    // This struct contains raw C strings and needs to have its lifetime scoped
+    // to this block.
     FlutterEngineAOTDataSource source = {};
     source.type = kFlutterEngineAOTDataSourceTypeElfPath;
     std::string patch_path;
