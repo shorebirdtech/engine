@@ -648,8 +648,6 @@ gboolean fl_engine_start(FlEngine* self, GError** error) {
       source.elf_path = fl_dart_project_get_aot_library_path(self->project);
     }
 
-    FML_LOG(INFO) << "ELF PATH: " << source.elf_path;
-
     if (self->embedder_api.CreateAOTData(&source, &self->aot_data) !=
         kSuccess) {
       g_set_error(error, fl_engine_error_quark(), FL_ENGINE_ERROR_FAILED,
