@@ -11,6 +11,9 @@
 #include <vector>
 
 #include "flutter/common/constants.h"
+#include "flutter/fml/logging.h"
+#include "flutter/fml/paths.h"
+#include "flutter/shell/common/shorebird/shorebird.h"
 #include "flutter/shell/platform/common/engine_switches.h"
 #include "flutter/shell/platform/embedder/embedder.h"
 #include "flutter/shell/platform/linux/fl_binary_messenger_private.h"
@@ -25,6 +28,7 @@
 #include "flutter/shell/platform/linux/fl_texture_gl_private.h"
 #include "flutter/shell/platform/linux/fl_texture_registrar_private.h"
 #include "flutter/shell/platform/linux/public/flutter_linux/fl_plugin_registry.h"
+#include "third_party/tonic/filesystem/filesystem/file.h"
 
 // Unique number associated with platform tasks.
 static constexpr size_t kPlatformTaskRunnerIdentifier = 1;
@@ -506,6 +510,42 @@ FlRenderer* fl_engine_get_renderer(FlEngine* self) {
   return self->renderer;
 }
 
+gboolean fl_set_up_shorebird(std::string assets_path_string,
+                             std::string& patch_path) {
+  auto shorebird_yaml_path =
+      fml::paths::JoinPaths({assets_path_string, "shorebird.yaml"});
+  std::string shorebird_yaml_contents("");
+  if (!filesystem::ReadFileToString(shorebird_yaml_path,
+                                    &shorebird_yaml_contents)) {
+    FML_LOG(ERROR) << "Failed to read shorebird.yaml.";
+    return false;
+  }
+
+  std::string code_cache_path = "$HOME/shorebird/my_shorebird_app";
+  // if (!GetLocalAppDataPath(code_cache_path)) {
+  //   FML_LOG(ERROR) << "Failed to retrieve the local AppData directory.";
+  //   return false;
+  // }
+
+  auto executable_location = fml::paths::GetExecutableDirectoryPath().second;
+  auto app_path =
+      fml::paths::JoinPaths({executable_location, "lib", "libapp.so"});
+  // Need to read this, I think from assets/version.json
+  flutter::ReleaseVersion release_version{"1.0.0", "1"};
+  // auto release_version_result =
+  // GetReleaseVersionAndBuildNumber(&release_version);
+  // if (release_version_result != kSuccess) {
+  //   FML_LOG(ERROR)
+  //       << "Failed to retrieve the release version and build number.";
+  //   return false;
+  // }
+
+  flutter::ShorebirdConfigArgs shorebird_args(code_cache_path, code_cache_path,
+                                              app_path, shorebird_yaml_contents,
+                                              release_version);
+  return ConfigureShorebird(shorebird_args, patch_path);
+}
+
 gboolean fl_engine_start(FlEngine* self, GError** error) {
   g_return_val_if_fail(FL_IS_ENGINE(self), FALSE);
 
@@ -575,7 +615,21 @@ gboolean fl_engine_start(FlEngine* self, GError** error) {
   if (self->embedder_api.RunsAOTCompiledDartCode()) {
     FlutterEngineAOTDataSource source = {};
     source.type = kFlutterEngineAOTDataSourceTypeElfPath;
-    source.elf_path = fl_dart_project_get_aot_library_path(self->project);
+    std::string patch_path;
+    auto setup_shorebird_result =
+        fl_set_up_shorebird(std::string(args.assets_path), patch_path);
+    if (setup_shorebird_result) {
+      // If we have a patch installed, we replace the default AOT library path
+      // with the patch path here.
+      FML_LOG(INFO) << "Setting project patch path: " << patch_path;
+      source.elf_path = patch_path.c_str();
+    } else {
+      FML_LOG(ERROR) << "Failed to configure Shorebird.";
+      source.elf_path = fl_dart_project_get_aot_library_path(self->project);
+    }
+
+    FML_LOG(INFO) << "ELF PATH: " << source.elf_path;
+
     if (self->embedder_api.CreateAOTData(&source, &self->aot_data) !=
         kSuccess) {
       g_set_error(error, fl_engine_error_quark(), FL_ENGINE_ERROR_FAILED,
