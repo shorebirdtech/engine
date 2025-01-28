@@ -4,6 +4,7 @@
 
 #include "flutter/shell/platform/linux/public/flutter_linux/fl_engine.h"
 
+#include <glib.h>
 #include <gmodule.h>
 
 #include <cstring>
@@ -535,7 +536,8 @@ gboolean fl_set_up_shorebird(const char* assets_path, std::string& patch_path) {
     }
   }
 
-  std::string code_cache_path = "$HOME/.shorebird_cache/" + appid;
+  std::string code_cache_path =
+      fml::paths::JoinPaths({g_get_home_dir(), ".shorebird_cache", appid});
   auto executable_location = fml::paths::GetExecutableDirectoryPath().second;
   auto app_path =
       fml::paths::JoinPaths({executable_location, "lib", "libapp.so"});
@@ -550,7 +552,7 @@ gboolean fl_set_up_shorebird(const char* assets_path, std::string& patch_path) {
   rapidjson::Document json_doc;
   json_doc.Parse(json_contents.c_str());
   if (json_doc.HasParseError()) {
-    // Could not parse version file, aborting..
+    // Could not parse version file, aborting.
     return false;
   }
 
@@ -597,8 +599,8 @@ gboolean fl_engine_start(FlEngine* self, GError** error) {
 
   g_autoptr(GPtrArray) command_line_args = fl_engine_get_switches(self);
   // FlutterProjectArgs expects a full argv, so when processing it for flags
-  // the first item is treated as the executable and ignored. Add a dummy value
-  // so that all switches are used.
+  // the first item is treated as the executable and ignored. Add a dummy
+  // value so that all switches are used.
   g_ptr_array_insert(command_line_args, 0, g_strdup("flutter"));
 
   gchar** dart_entrypoint_args =
@@ -640,7 +642,6 @@ gboolean fl_engine_start(FlEngine* self, GError** error) {
     if (setup_shorebird_result) {
       // If we have a patch installed, we replace the default AOT library path
       // with the patch path here.
-      FML_LOG(INFO) << "Setting project patch path: " << patch_path;
       source.elf_path = patch_path.c_str();
     } else {
       FML_LOG(ERROR) << "Failed to configure Shorebird.";
