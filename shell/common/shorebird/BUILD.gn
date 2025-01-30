@@ -28,6 +28,7 @@ source_set("shorebird") {
     "//flutter/runtime:libdart",
     "//flutter/shell/common",
     "//flutter/shell/platform/embedder:embedder_headers",
+    "//flutter/third_party/updater:updater_headers",
   ]
 
   include_dirs = [ "//flutter/updater" ]

@@ -15,6 +15,7 @@
     kDartVmSnapshotInstructions;
     InternalFlutterGpu*;
     kInternalFlutterGpu*;
+    shorebird*;
   local:
     *;
 };

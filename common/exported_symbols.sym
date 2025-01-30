@@ -7,4 +7,6 @@
   kDartIsolateSnapshotInstructions;
   InternalFlutterGpu*;
   kInternalFlutterGpu*;
+  _shorebird*;
+  shorebird*;
 };

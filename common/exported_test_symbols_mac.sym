@@ -10,3 +10,5 @@ _Spawn
 _LoadLibraryFromKernel
 _LookupEntryPoint
 _ForceShutdownIsolate
+_shorebird*
+shorebird*
