@@ -154,7 +154,6 @@ source_set("flutter_windows_source") {
 
   deps = [
     ":flutter_windows_headers",
-    "//flutter/third_party/updater:updater_headers",
     "//flutter/fml:fml",
     "//flutter/impeller/renderer/backend/gles",
     "//flutter/shell/common/shorebird:shorebird",
@@ -164,6 +163,7 @@ source_set("flutter_windows_source") {
     "//flutter/shell/platform/common/client_wrapper:client_wrapper",
     "//flutter/shell/platform/embedder:embedder_as_internal_library",
     "//flutter/shell/platform/windows/client_wrapper:client_wrapper_windows",
+    "//flutter/third_party/updater:updater_headers",
 
     # libEGL_static MUST be ordered before libGLESv2_static in this list. If
     # reversed, a linker error will occur, reporting DllMain already defined in
