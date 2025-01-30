@@ -168,9 +168,7 @@ source_set("common") {
     if (target_cpu == "arm64") {
       libs = [ "//flutter/third_party/updater/target/aarch64-apple-darwin/release/libupdater.a" ]
     } else if (target_cpu == "x64") {
-      libs = [
-        "//flutter/third_party/updater/target/x86_64-apple-darwin/release/libupdater.a",
-      ]
+      libs = [ "//flutter/third_party/updater/target/x86_64-apple-darwin/release/libupdater.a" ]
     }
   }
 
