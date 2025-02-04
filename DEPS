@@ -634,7 +634,7 @@ deps = {
   'src/flutter/third_party/ocmock':
    Var('flutter_git') + '/third_party/ocmock' + '@' +  Var('ocmock_rev'),
 
-   'src/third_party/updater':
+  'src/flutter/third_party/updater':
    Var('updater_git') + '@' + Var('updater_rev'),
 
   'src/flutter/third_party/libjpeg-turbo/src':
