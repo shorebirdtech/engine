@@ -183,7 +183,7 @@ copy("publish_headers_windows") {
 }
 
 copy("updater_exports_windows") {
-  sources = [ "flutter_windows.dll.def"]
+  sources = [ "flutter_windows.dll.def" ]
   outputs = [ "$root_out_dir/{{source_file_part}}" ]
 }
 
