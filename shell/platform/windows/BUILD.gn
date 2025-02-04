@@ -182,6 +182,11 @@ copy("publish_headers_windows") {
   deps = [ "//flutter/shell/platform/common:publish_headers" ]
 }
 
+copy("updater_exports_windows") {
+  sources = [ "flutter_windows.dll.def" ]
+  outputs = [ "$root_out_dir/{{source_file_part}}" ]
+}
+
 shared_library("flutter_windows") {
   deps = [ ":flutter_windows_source" ]
 
@@ -294,6 +299,7 @@ group("windows") {
   deps = [
     ":flutter_windows",
     ":publish_headers_windows",
+    ":updater_exports_windows",
     "//flutter/shell/platform/windows/client_wrapper:publish_wrapper_windows",
   ]
 
