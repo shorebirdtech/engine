@@ -12,6 +12,7 @@
 #include "flutter/fml/trace_event.h"
 #include "flutter/lib/snapshot/snapshot.h"
 #include "flutter/runtime/dart_vm.h"
+#include "flutter/shell/common/shorebird/updater.h"
 #include "third_party/dart/runtime/include/dart_api.h"
 
 namespace flutter {
@@ -207,6 +208,12 @@ static std::shared_ptr<const fml::Mapping> ResolveIsolateData(
                                                 true      // dontneed_safe
   );
 #else   // DART_SNAPSHOT_STATIC_LINK
+  // Tell the Rust updater we're booting from whatever patch it selected.
+  // This copies next_boot → current_boot in the Rust state. The call is
+  // guarded inside Updater to execute at most once per process — see the
+  // Updater class comment for why this matters in add-to-app and
+  // FlutterEngineGroup scenarios.
+  shorebird::Updater::Instance().ReportLaunchStart();
   return SearchMapping(
       settings.isolate_snapshot_data,       // embedder_mapping_callback
       settings.isolate_snapshot_data_path,  // file_path
