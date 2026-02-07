@@ -31,8 +31,6 @@
 #include "third_party/dart/runtime/include/dart_tools_api.h"
 #include "txt/platform.h"
 
-#include "third_party/updater/library/include/updater.h"
-
 namespace flutter {
 
 constexpr int kMinimumAndroidApiLevelForVulkan = 29;

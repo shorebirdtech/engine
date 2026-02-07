@@ -220,14 +220,6 @@ source_set("flutter_framework_source") {
     "//flutter:config",
   ]
 
-  if (target_cpu == "arm64") {
-    libs = [ "//flutter/third_party/updater/target/aarch64-apple-ios/release/libupdater.a" ]
-  } else if (target_cpu == "x64") {
-    libs = [ "//flutter/third_party/updater/target/x86_64-apple-ios/release/libupdater.a" ]
-  } else {
-    assert(false, "Unsupported target_cpu")
-  }
-
   frameworks = [
     "AudioToolbox.framework",
     "CoreMedia.framework",
